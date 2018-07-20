@@ -1,0 +1,77 @@
+<div class="row">
+<div class="col-sm-12 deldttime-div">
+  <div class="form-group required col-sm-3">
+    <label class="control-label">{{ del_date }}</label>
+    <div class="input-group deldttime_dateslot">
+      <input type="text" name="deldttime_dateslot"  data-date-format="{{ deldttime_getformat }}"  class="form-control" style="pointer-events:none;" />
+      <span class="input-group-btn">
+      <button class="btn btn-default" type="button"><i class="fa fa-calendar"></i></button>
+      </span> </div>
+  </div>
+  
+  {% if(deldttime_enable_time) %}
+  <div class="form-group required col-sm-3">
+    <label class="control-label">{{ del_time }}</label>
+    {% if(deldttime_setting['timetable']) %}
+    <select name="deldttime_timeslot" class="form-control" >
+      <option value=""> --- </option>
+      {% for timetable in deldttime_setting['timetable'] %}
+      <option value="{{ timetable['timefrom'] }} - {{ timetable['timeto'] }}"> {{ timetable['timefrom'] }} - {{ timetable['timeto'] }} </option>
+      {% endfor %}
+    </select>
+    {% endif %}
+  </div>
+  {% endif %}
+
+<div class="col-sm-3"><br />
+<input type="button" value="{{ btn_save }}" id="button-deldttime-save" class="btn btn-primary" data-loading-text="{{ btn_loging_text }}"></div>
+</div>
+</div>
+
+<script language="javascript">
+var availableDates = ["{{ valdatearray|join('","') }}"];
+var daysOfWeekDis = [{{ weekend|join(',') }}];
+var disabledDt = ["{{ disabledate|join('","') }}"];
+$('.deldttime_dateslot').datetimepicker({
+	defaultDate: moment().add({{ deldttime_setting['fromxday'] }},'days'),
+    daysOfWeekDisabled: daysOfWeekDis,
+    disabledDates: disabledDt,
+	enabledDates: availableDates,
+	pickTime: false,
+	autoClose: true
+}).on('dp.change',function(event){
+	$('#deldttime_timeslot').show(); 
+	$('#button-deldttime-save').trigger('click');
+}); 
+
+// disable confirm checkout body 
+$('#collapse-checkout-confirm').find('.panel-body').find('.buttons').css({"opacity":"0.6","pointer-events":"none"});
+
+$('#button-deldttime-save').on('click', function() {
+	$.ajax({
+		url: 'index.php?route={{ modpath }}/savedata',
+		type: 'post',
+		data: $('.deldttime-div input[type=\'text\'], .deldttime-div select'),
+        dataType: 'json',
+		beforeSend: function() {
+			$('#button-deldttime-save').button('loading');
+		},
+		success: function(json) {
+			$('.alert, .text-danger').remove();
+			$('#button-deldttime-save').button('reset');
+			
+ 			if (json['error']) {
+                 if (json['error']['error_del_date']) {
+                    $('.deldttime-div').prepend('<div class="alert alert-danger">' + json['error']['error_del_date'] + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+                } if (json['error']['error_del_time']) {
+                    $('.deldttime-div').prepend('<div class="alert alert-danger">' + json['error']['error_del_time'] + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+                } 
+				$('#collapse-checkout-confirm').find('.panel-body').find('.buttons').css({"opacity":"0.6","pointer-events":"none"});
+            } else if (json['success']) {
+				$('.deldttime-div').prepend('<div class="alert alert-success">' + json['success'] + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+				$('#collapse-checkout-confirm').find('.panel-body').find('.buttons').css({"opacity":"1","pointer-events":"auto"});
+			}			
+		}
+	});
+});
+</script>

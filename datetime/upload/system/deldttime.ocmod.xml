@@ -1,0 +1,407 @@
+<modification>
+	<name>Delivery Date Time Slot At Checkout</name>
+    <version>2.X-3.X</version>
+    <link>http://www.opencarttools.net</link>
+    <author>opencarttools@gmail.com</author>
+    <code>28132</code> 	
+ 	
+
+<!-- catalog / controller / checkout / checkout START -->
+ 	<file path="catalog/controller/checkout/confirm.php">
+		<operation error="skip">
+            <search position="replace"><![CDATA[$this->session->data['order_id'] = $this->model_checkout_order->addOrder($order_data);]]></search>
+			<add position="replace"><![CDATA[$this->session->data['order_id'] = $this->model_checkout_order->addOrder($order_data);
+			$data['deldttime_module'] = (substr(VERSION,0,3)>='3.0' || substr(VERSION,0,3)=='2.3') ? $this->load->controller('extension/module/deldttime') : $this->load->controller('module/deldttime');]]></add>
+        </operation>
+  	</file> 
+	
+	<!-- catalog / view / checkout / checkout TPL START -->
+ 	<file path="catalog/view/theme/*/template/checkout/confirm.twig">
+ 		<operation error="skip">
+            <search position="replace"><![CDATA[<div class="table-responsive">]]></search>
+			<add position="replace"><![CDATA[{{ deldttime_module }}
+			<div class="table-responsive">]]></add> 
+        </operation>
+  	</file> 
+	
+	
+<!-- catalog /  model / checkout / order START -->
+	<file path="catalog/model/checkout/order.php">
+		<operation error="skip">
+            <search position="replace"><![CDATA[return array(]]></search>
+			<add position="replace"><![CDATA[$deldttime_dateslot = isset($order_query->row['deldttime_dateslot']) ? $order_query->row['deldttime_dateslot'] : '';
+			$deldttime_timeslot = isset($order_query->row['deldttime_timeslot']) ? $order_query->row['deldttime_timeslot'] : '';
+
+			return array(
+			'deldttime_dateslot' => $deldttime_dateslot, 
+			'deldttime_timeslot' => $deldttime_timeslot,]]></add> 
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA[$data = array();]]></search>
+			<add position="replace"><![CDATA[$data = array();
+ 			$data['deldttime_status'] = $this->config->get((substr(VERSION,0,3)>='3.0') ? 'module_deldttime_status' : 'deldttime_status');
+			$data['deldttime_enable_time'] = $this->config->get((substr(VERSION,0,3)>='3.0') ? 'module_deldttime_enable_time' : 'deldttime_enable_time');
+			 
+			$deldttime_dateslot = isset($order_info['deldttime_dateslot']) ? $order_info['deldttime_dateslot'] : '';
+			$deldttime_timeslot = isset($order_info['deldttime_timeslot']) ? $order_info['deldttime_timeslot'] : '';
+			
+			$this->load->language((substr(VERSION,0,3)>='3.0' || substr(VERSION,0,3)=='2.3') ? 'extension/module/deldttime' : 'extension/deldttime');
+			$data['del_date'] = $this->language->get('del_date');
+			$data['del_time'] = $this->language->get('del_time');
+			
+			$this->load->model('extension/deldttime');
+			$data['deldttime_dateslot'] = $this->model_extension_deldttime->getdatewithformatdisplay($deldttime_dateslot);
+			$data['deldttime_timeslot'] = $this->model_extension_deldttime->gettimewithformatDB($deldttime_timeslot);]]></add> 
+        </operation>
+  	</file>
+ 	<!-- catalog /  model / checkout / order END -->
+	
+	
+	<!-- catalog / controller / mail / order START -->
+	<file path="catalog/controller/mail/order.php"> 
+		<operation error="skip">
+            <search position="replace"><![CDATA[$data['comment'] = strip_tags($order_info['comment']);]]></search>
+			<add position="replace"><![CDATA[$data['comment'] = strip_tags($order_info['comment']);
+ 			$data['deldttime_status'] = $this->config->get((substr(VERSION,0,3)>='3.0') ? 'module_deldttime_status' : 'deldttime_status');
+			$data['deldttime_enable_time'] = $this->config->get((substr(VERSION,0,3)>='3.0') ? 'module_deldttime_enable_time' : 'deldttime_enable_time');
+			 
+			$deldttime_dateslot = isset($order_info['deldttime_dateslot']) ? $order_info['deldttime_dateslot'] : '';
+			$deldttime_timeslot = isset($order_info['deldttime_timeslot']) ? $order_info['deldttime_timeslot'] : '';
+			
+			$this->load->language((substr(VERSION,0,3)>='3.0' || substr(VERSION,0,3)=='2.3') ? 'extension/module/deldttime' : 'extension/deldttime');
+			$data['del_date'] = $this->language->get('del_date');
+			$data['del_time'] = $this->language->get('del_time');
+			
+			$this->load->model('extension/deldttime');
+			$data['deldttime_dateslot'] = $this->model_extension_deldttime->getdatewithformatdisplay($deldttime_dateslot);
+			$data['deldttime_timeslot'] = $this->model_extension_deldttime->gettimewithformatDB($deldttime_timeslot);]]></add> 
+        </operation>
+  	</file> 
+	
+	
+	
+<!-- catalog /  template / mail / order TPL START -->
+ 	<file path="catalog/view/theme/*/template/mail/order_alert.twig">
+ 		<operation error="skip">
+            <search position="replace"><![CDATA[{% for voucher in vouchers %}]]></search>
+			<add position="replace"><![CDATA[{% if(deldttime_status) %}
+ 				{% if(deldttime_dateslot) %}  
+					<p><b>{{ del_date  }}</b> : {{ deldttime_dateslot }}</p> 
+				{% endif %}
+				
+				{% if(deldttime_enable_time and deldttime_timeslot) %} 
+					<p><b>{{ del_time  }}</b> : {{ deldttime_timeslot }}</p> 
+				{% endif %}
+ 			{% endif %}
+		{% for voucher in vouchers %}]]></add> 
+        </operation>
+  	</file>	
+ 	<!-- catalog /  template / mail / order TPL END -->
+	
+<!-- =============================================== FRONT END CHANGES DONE  =============================================== -->
+	
+	
+	
+	
+
+<!-- =============================================== ADMIN START =============================================== -->	 
+	
+<!-- Admin / model / sales / order  START -->
+ 	<file path="admin/model/sale/order.php">
+   		<operation error="skip">
+            <search position="replace"><![CDATA[return array(]]></search>
+			<add position="replace"><![CDATA[
+			$deldttime_dateslot = isset($order_query->row['deldttime_dateslot']) ? $order_query->row['deldttime_dateslot'] : '';
+			$deldttime_timeslot = isset($order_query->row['deldttime_timeslot']) ? $order_query->row['deldttime_timeslot'] : ''; 
+ 			$this->load->model('extension/deldttime');
+			$deldttime_dateslot = $this->model_extension_deldttime->getdatewithformatdisplay($deldttime_dateslot);
+ 		return array(
+ 			'deldttime_dateslot' => $deldttime_dateslot,
+			'deldttime_timeslot' => $deldttime_timeslot,]]></add> 
+        </operation>
+        
+    	<operation error="skip">
+			<search position="replace"><![CDATA[o.date_added, o.date_modified]]></search>
+			<add position="replace"><![CDATA[o.deldttime_dateslot, o.deldttime_timeslot, o.date_added, o.date_modified]]></add> 
+		</operation>
+        
+        <operation error="skip">
+            <search position="replace"><![CDATA[if (!empty($data['filter_order_id'])) {]]></search>
+            <add position="replace"><![CDATA[$this->load->model('extension/deldttime');
+			if (!empty($data['filter_deldttime_dateslot'])) { $sql .= " AND DATE(deldttime_dateslot) = DATE('" . $this->db->escape($this->model_extension_deldttime->getdatewithformatDB($data['filter_deldttime_dateslot'])) . "')"; }	
+			if (!empty($data['filter_deldttime_timeslot'])) { $sql .= " AND deldttime_timeslot = '" . $this->db->escape($data['filter_deldttime_timeslot']). "' "; }			
+			if (!empty($data['filter_order_id'])) {
+			]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA['o.order_id',]]></search>
+            <add position="replace"><![CDATA['o.order_id',
+			'o.deldttime_dateslot',
+			'o.deldttime_timeslot',]]></add>
+        </operation>
+    </file>	
+ 	<!-- Admin / model / sales / order  END -->
+	
+	
+	
+	<!-- Admin / controller / sales / order  START -->
+	
+	<file path="admin/controller/sale/order.php">
+        <operation error="skip">
+            <search position="replace"><![CDATA[$url = '';]]></search>
+            <add position="replace"><![CDATA[
+			$filter_deldttime_dateslot = (isset($this->request->get['filter_deldttime_dateslot'])) ? $this->request->get['filter_deldttime_dateslot'] : null; 
+			$filter_deldttime_timeslot = (isset($this->request->get['filter_deldttime_timeslot'])) ? $this->request->get['filter_deldttime_timeslot'] : null; 
+			$url = '';
+			if (isset($this->request->get['filter_deldttime_dateslot'])) { $url .= '&filter_deldttime_dateslot=' . $this->request->get['filter_deldttime_dateslot']; }
+ 			if (isset($this->request->get['filter_deldttime_timeslot'])) { $url .= '&filter_deldttime_timeslot=' . $this->request->get['filter_deldttime_timeslot']; } ]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA['filter_order_id'        => $filter_order_id,]]></search>
+            <add position="replace"><![CDATA['filter_order_id'        => $filter_order_id,
+			'filter_deldttime_dateslot'    => $filter_deldttime_dateslot,
+			'filter_deldttime_timeslot' => $filter_deldttime_timeslot,]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA[$order_total = $this->model_sale_order->getTotalOrders($filter_data);]]></search>
+            <add position="replace"><![CDATA[$order_total = $this->model_sale_order->getTotalOrders($filter_data);
+			$this->load->language((substr(VERSION,0,3)>='3.0' || substr(VERSION,0,3)=='2.3') ? 'extension/module/deldttime' : 'module/deldttime');
+			$this->load->language('sale/order') ;
+            $this->load->model('extension/deldttime');
+            $data['deldttime_status'] = $this->config->get(substr(VERSION,0,3)>='3.0' ? 'module_deldttime_status' : 'deldttime_status');
+            $data['deldttime_enable_time'] = $this->config->get((substr(VERSION,0,3)>='3.0') ? 'module_deldttime_enable_time' : 'deldttime_enable_time');
+			$data['deldttime_getformat'] = $this->model_extension_deldttime->getformat();]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA['order_id'      => $result['order_id'],]]></search>
+            <add position="replace"><![CDATA['order_id'      => $result['order_id'],
+			'deldttime_dateslot' => $this->model_extension_deldttime->getdatewithformatdisplay($result['deldttime_dateslot']),
+			'deldttime_timeslot' => $this->model_extension_deldttime->gettimewithformatDB($result['deldttime_timeslot']),]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA[$this->load->language('sale/order');]]></search>
+            <add position="replace"><![CDATA[
+			$this->load->language((substr(VERSION,0,3)>='3.0' || substr(VERSION,0,3)=='2.3') ? 'extension/module/deldttime' : 'module/deldttime');
+			$this->load->language('sale/order');
+            $this->load->model('extension/deldttime');
+            $data['deldttime_status'] = $this->config->get(substr(VERSION,0,3)>='3.0' ? 'module_deldttime_status' : 'deldttime_status');
+            $data['deldttime_enable_time'] = $this->config->get((substr(VERSION,0,3)>='3.0') ? 'module_deldttime_enable_time' : 'deldttime_enable_time');]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA[$pagination = new Pagination();]]></search>
+            <add position="replace"><![CDATA[$pagination = new Pagination();
+			$data['column_del_date'] = $this->language->get('column_del_date');
+			$data['column_del_time'] = $this->language->get('column_del_time');
+ 			$data['entry_del_date'] = $this->language->get('entry_del_date');
+			$data['entry_del_time'] = $this->language->get('entry_del_time');]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA[$data['sort_order']]]></search>
+            <add position="replace"><![CDATA[
+			$data['sort_deldttime_dateslot'] = $this->url->link('sale/order', 'user_token=' . $this->session->data['user_token'] . '&sort=deldttime_dateslot' . $url, 'SSL');
+			$data['sort_deldttime_timeslot'] = $this->url->link('sale/order', 'user_token=' . $this->session->data['user_token'] . '&sort=deldttime_timeslot' . $url, 'SSL');
+ 			$data['sort_order']]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA[$data['filter_order_id'] = $filter_order_id;]]></search>
+            <add position="replace"><![CDATA[$data['filter_order_id'] = $filter_order_id;
+			$data['filter_deldttime_dateslot'] = $filter_deldttime_dateslot;
+			$data['filter_deldttime_timeslot'] = $filter_deldttime_timeslot;]]></add>
+        </operation>
+        
+        
+        <!-- for info. invoice and shipping label -->
+        <operation error="skip">
+            <search position="replace"><![CDATA[$order_info = $this->model_sale_order->getOrder($order_id);]]></search>
+			<add position="replace"><![CDATA[$order_info = $this->model_sale_order->getOrder($order_id);
+ 			$data['deldttime_dateslot'] = isset($order_info['deldttime_dateslot']) ? $order_info['deldttime_dateslot'] : '';
+			$data['deldttime_timeslot'] = isset($order_info['deldttime_timeslot']) ? $order_info['deldttime_timeslot'] : '';
+ 			$data['deldttime_getformat'] = $this->model_extension_deldttime->getformat();
+			$data['deldttime_ext_path'] = (substr(VERSION,0,3)>='3.0' || substr(VERSION,0,3)>='2.3') ? 'extension/module/deldttime' : 'module/deldttime';
+			$data['del_date'] = $this->language->get('del_date');
+			$data['del_time'] = $this->language->get('del_time');
+			$data['deldttime_module_order_info'] = (substr(VERSION,0,3)>='3.0' || substr(VERSION,0,3)=='2.3') ? $this->load->controller('extension/module/deldttime/orderinfo', $order_id) : $this->load->controller('module/deldttime/orderinfo', $order_id);]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA['order_id'	       => $order_id,]]></search>
+			<add position="replace"><![CDATA['order_id'	       => $order_id,
+ 			'deldttime_dateslot'  => isset($order_info['deldttime_dateslot']) ? $order_info['deldttime_dateslot'] : '',
+			'deldttime_timeslot'  => isset($order_info['deldttime_timeslot']) ? $order_info['deldttime_timeslot'] : '',]]></add> 
+        </operation>
+    </file>
+	
+	<!-- Admin / controler / sales / order  END -->
+	
+	
+	
+<!-- Admin / view / sales / order list START -->
+	<file path="admin/view/template/sale/order_list.twig">
+        <operation error="skip">
+            <search position="before" offset="1"><![CDATA[<label class="control-label" for="input-date-added">{{ entry_date_added }}</label>]]></search>
+            <add position="before" offset="1"><![CDATA[{% if(deldttime_status) %} 
+			  
+			  <div class="form-group">
+                <label class="control-label" for="input-deldttime_dateslot">{{ entry_del_date }}</label>
+                <div class="input-group date">
+                  <input type="text" name="filter_deldttime_dateslot" value="{{ filter_deldttime_dateslot }}" placeholder="{{ entry_del_date }}" data-date-format="{{ deldttime_getformat }}" id="input-deldttime_dateslot" class="form-control" />
+                  <span class="input-group-btn">
+                  <button type="button" class="btn btn-default"><i class="fa fa-calendar"></i></button>
+                  </span></div>
+              </div>
+			  
+			  {% if(deldttime_enable_time) %}
+              <div class="form-group">
+                <label class="control-label" for="input-deldttime_timeslot">{{ entry_del_time }}</label>
+                <input type="text" name="filter_deldttime_timeslot" value="{{ filter_deldttime_timeslot }}" placeholder="{{ entry_del_time }}" id="input-deldttime_timeslot" class="form-control" />
+              </div>
+              {% endif %}
+			  
+			{% endif %}]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA[<td class="text-right">{{ column_action }}</td>]]></search>
+            <add position="replace"><![CDATA[{% if(deldttime_status) %}
+			
+			<td class="text-left">{% if sort == 'deldttime_dateslot' %} <a href="{{ sort_deldttime_dateslot }}" class="{{ order|lower }}">{{ column_del_date }}</a> {% else %} <a href="{{ sort_deldttime_dateslot }}">{{ column_del_date }}</a> {% endif %}</td>
+			
+			{% if(deldttime_enable_time) %}
+			<td class="text-left">{% if sort == 'deldttime_timeslot' %} <a href="{{ sort_deldttime_timeslot }}" class="{{ order|lower }}">{{ column_del_time }}</a> {% else %} <a href="{{ sort_deldttime_timeslot }}">{{ column_del_time }}</a> {% endif %}</td>
+			{% endif %} 
+			
+			{% endif %} 
+			<td class="text-right">{{ column_action }}</td>]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA[<td class="text-left">{{ order.date_modified }}</td>]]></search>
+            <add position="replace"><![CDATA[<td class="text-left">{{ order.date_modified }}</td>
+			
+			 {% if(deldttime_status) %}
+			  <td class="text-left">{{ order['deldttime_dateslot'] }}</td>
+			  {% if(deldttime_enable_time) %}<td class="text-left">{{ order['deldttime_timeslot'] }}</td>{% endif %}
+ 			 {% endif %}
+			 
+			 ]]></add>
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA[var filter_order_id = $('input[name=\'filter_order_id\']').val();]]></search>
+            <add position="replace"><![CDATA[{% if(deldttime_status) %}
+			
+			var filter_deldttime_dateslot = $('input[name=\'filter_deldttime_dateslot\']').val();
+			if (filter_deldttime_dateslot) { url += '&filter_deldttime_dateslot=' + encodeURIComponent(filter_deldttime_dateslot); }
+			
+            {% if(deldttime_enable_time) %}
+			var filter_deldttime_timeslot = $('input[name=\'filter_deldttime_timeslot\']').val();
+			if (filter_deldttime_timeslot) { url += '&filter_deldttime_timeslot=' + encodeURIComponent(filter_deldttime_timeslot); }
+            {% endif %}
+			
+			{% endif %}
+			var filter_order_id = $('input[name=\'filter_order_id\']').val();]]></add>
+        </operation> 		
+    </file>
+	
+	
+<!-- Admin / view / sales / order info  START -->
+ 	<file path="admin/view/template/sale/order_info.twig">
+ 		<operation error="skip">
+            <search position="after" offset="2"><![CDATA[<td>{{ shipping_method }}</td>]]></search>
+			<add position="after" offset="2"><![CDATA[{{ deldttime_module_order_info }}]]></add> 
+        </operation>
+  	</file>
+	
+	
+<!-- Admin / view / sales / order invoice  START -->
+	<file path="admin/view/template/sale/order_invoice.twig">
+ 		<operation error="skip">
+            <search position="replace"><![CDATA[{% if order.shipping_method %}]]></search>
+			<add position="replace"><![CDATA[{% if order.shipping_method %} 
+			{% if(deldttime_status) %}
+			
+				{% if(order['deldttime_dateslot']) %}
+					<b>{{ del_date }} :</b> {{ order['deldttime_dateslot'] }}<br />
+				{% endif %}
+				
+				{% if(deldttime_enable_time and order['deldttime_timeslot']) %}
+					<b>{{ del_time }} :</b> {{ order['deldttime_timeslot'] }}<br />
+				{% endif %}
+				
+			{% endif %}]]></add> 
+        </operation>
+  	</file>
+	
+	
+<!-- Admin / view / sales / order Shipping  START -->
+	<file path="admin/view/template/sale/order_shipping.twig">
+ 		<operation error="skip">
+            <search position="replace"><![CDATA[{% if order.shipping_method %}]]></search>
+			<add position="replace"><![CDATA[{% if order.shipping_method %} 
+			{% if(deldttime_status) %}
+			
+				{% if(order['deldttime_dateslot']) %}
+					<b>{{ del_date }} :</b> {{ order['deldttime_dateslot'] }}<br />
+				{% endif %}
+				
+				{% if(deldttime_enable_time and order['deldttime_timeslot']) %}
+					<b>{{ del_time }} :</b> {{ order['deldttime_timeslot'] }}<br />
+				{% endif %}
+				
+			{% endif %}]]></add> 
+        </operation>
+  	</file>
+	
+	
+	
+	
+	
+<!-- Admin / extension / dashboard / recent order  START -->
+	
+	<file path="admin/controller/extension/dashboard/recent.php">
+		<operation error="skip">
+            <search position="replace"><![CDATA[$data['orders'][] = array(]]></search>
+			<add position="replace"><![CDATA[$this->load->language((substr(VERSION,0,3)>='3.0' || substr(VERSION,0,3)=='2.3') ? 'extension/module/deldttime' : 'module/deldttime');
+            $data['deldttime_status'] = $this->config->get(substr(VERSION,0,3)>='3.0' ? 'module_deldttime_status' : 'deldttime_status');
+            $data['deldttime_enable_time'] = $this->config->get((substr(VERSION,0,3)>='3.0') ? 'module_deldttime_enable_time' : 'deldttime_enable_time');
+			$this->load->model('extension/deldttime');
+			$data['del_date'] = $this->language->get('del_date');
+			$data['del_time'] = $this->language->get('del_time');
+ 		$data['orders'][] = array(
+			'deldttime_dateslot' => $this->model_extension_deldttime->getdatewithformatdisplay($result['deldttime_dateslot']),
+			'deldttime_timeslot' => $this->model_extension_deldttime->gettimewithformatDB($result['deldttime_timeslot']),]]></add>
+        </operation> 
+	</file>
+	
+	
+	<!-- Admin / extension / dashboard / recent info TPL  START -->
+	
+	<file path="admin/view/template/extension/dashboard/recent_info.twig">
+ 		<operation error="skip">
+            <search position="replace"><![CDATA[<td>{{ column_date_added }}</td>]]></search>
+			<add position="replace"><![CDATA[<td>{{ column_date_added }}</td>
+			{% if(deldttime_status) %} 
+				<td>{{ del_date }}</td> 
+				{% if(deldttime_enable_time) %} <td>{{ del_time }}</td> {% endif %}
+			{% endif %}]]></add> 
+        </operation>
+		
+		<operation error="skip">
+            <search position="replace"><![CDATA[<td>{{ order.date_added }}</td>]]></search>
+			<add position="replace"><![CDATA[<td>{{ order.date_added }}</td>
+			{% if(deldttime_status) %} 
+				<td>{{ order['deldttime_dateslot'] }}</td>
+				{% if(deldttime_enable_time) %}<td>{{ order['deldttime_timeslot'] }}</td>{% endif %}
+			{% endif %}]]></add> 
+        </operation> 
+	</file>
+</modification>

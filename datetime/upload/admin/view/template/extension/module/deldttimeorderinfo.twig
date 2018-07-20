@@ -1,0 +1,73 @@
+{% if(deldttime_status) %}
+    
+    {% if(deldttime_dateslot) %} 
+    <tr>
+      <td>{{ del_date }} : </td>
+      <td><span id="val_deldttime_dateslot"> {{ deldttime_dateslot }} </span> <a class="btn btn-success" id="change_deldttime_dateslot" onclick="show_deldttime_dateslot();"> Change </a>
+        <div class="well" id="div_deldttime_dateslot" style="display:none">
+          <div class="input-group date">
+            <input type="text" name="input_deldttime_dateslot" value="{{ deldttime_dateslot }}" data-date-format="{{ deldttime_getformat }}" id="input_deldttime_dateslot" class="form-control" />
+            <span class="input-group-btn">
+            <button type="button" class="btn btn-default"><i class="fa fa-calendar"></i></button>
+            </span> </div>
+          <a class="btn btn-success" onclick="save_deldttime_dateslot();"> Save</a> <a class="btn btn-danger" onclick="hide_deldttime_dateslot();"> Cancel</a> </div></td>
+    </tr> 
+    {% endif %}
+    
+    {% if(deldttime_enable_time and deldttime_timeslot) %}
+    <tr>
+      <td>{{ del_time }} : </td>
+      <td><span id="val_deldttime_timeslot"> {{ deldttime_timeslot }} </span> <a class="btn btn-success" id="change_deldttime_timeslot" onclick="show_deldttime_timeslot();"> Change </a>
+        <div class="well" id="div_deldttime_timeslot" style="display:none">
+          <input type="text" name="input_deldttime_timeslot" value="{{ deldttime_timeslot }}" id="input_deldttime_timeslot" class="form-control" />
+          <a class="btn btn-success" onclick="save_deldttime_timeslot();"> Save</a> <a class="btn btn-danger" onclick="hide_deldttime_timeslot();"> Cancel</a> </div>
+        </td>
+    </tr>
+    {% endif %}
+
+<script language="javascript">
+function show_deldttime_dateslot() {
+	$('#change_deldttime_dateslot').hide();
+	$('#div_deldttime_dateslot').show();
+	$('.date').datetimepicker({ pickTime: false });
+}
+function hide_deldttime_dateslot() {
+	$('#change_deldttime_dateslot').show();
+	$('#div_deldttime_dateslot').hide();
+}
+function save_deldttime_dateslot() {
+	$.ajax({
+		url: 'index.php?route={{ modpath }}/savedateslot&user_token={{ user_token }}&order_id={{ order_id }}',
+		type: 'post',
+		data: { 'input_deldttime_dateslot' : $('#input_deldttime_dateslot').val() }, 
+		success: function(json) {
+		$('#val_deldttime_dateslot').html($('#input_deldttime_dateslot').val());
+			hide_deldttime_dateslot();
+		}
+	});
+}
+</script>
+
+<script language="javascript">
+function show_deldttime_timeslot() {
+	$('#change_deldttime_timeslot').hide();
+	$('#div_deldttime_timeslot').show();
+}
+function hide_deldttime_timeslot() {
+	$('#change_deldttime_timeslot').show();
+	$('#div_deldttime_timeslot').hide();
+}
+function save_deldttime_timeslot() {
+	$.ajax({
+		url: 'index.php?route={{ modpath }}/savetimeslot&user_token={{ user_token }}&order_id={{ order_id }}',
+		type: 'post',
+		data: { 'input_deldttime_timeslot' : $('#input_deldttime_timeslot').val() }, 
+		success: function(json) {
+			$('#val_deldttime_timeslot').html($('#input_deldttime_timeslot').val());
+			hide_deldttime_timeslot();
+		} 
+	});
+}
+</script>
+
+{% endif %}
