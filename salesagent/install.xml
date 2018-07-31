@@ -1,0 +1,1188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>Order Entry Sales Agents Add-on</name>
+    <id>order_entry_sales_agents</id>
+    <version>1.5.1.0</version>
+	<author>ACFD Development</author>
+    <link>mailto:develop@acfddev.com</link>
+	<code>oe-sales-agents</code>
+
+	<file path="admin/controller/common/column_left.php">
+		<operation>
+			<search><![CDATA[
+				if ($this->user->hasPermission('access', 'sale/return')) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->session->data['sales_agent_id'])) {
+					$data['sales_agent'] = 1;
+				} else {
+					$data['sales_agent'] = 0;
+				}
+				if ($this->user->hasPermission('access', 'extension/sale/sales_agents') && $this->config->get('module_sales_agents_status')) {
+					$this->load->language('extension/module/sales_agents_language');
+					$sale[] = array(
+						'name'	   => $this->language->get('text_sales_agents'),
+						'href'     => $this->url->link('extension/sale/sales_agents', 'user_token=' . $this->session->data['user_token'], true),
+						'children' => array()
+					);
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/common/header.php">
+		<operation>
+			<search><![CDATA[
+				public function index() {
+			]]></search>
+			<add position="after"><![CDATA[
+				if (isset($this->session->data['sales_agent_id'])) {
+					if (isset($this->request->get['route'])) {
+						$route = $this->request->get['route'];
+						$route_array = array('sale/order','extension/sale/order_entry','extension/sale/order_entry/add','extension/sale/order_entry/edit','extension/report/sales_agents_report');
+						if (!in_array($route, $route_array)) {
+							$this->response->redirect($this->url->link('sale/order', 'user_token=' . $this->session->data['user_token'], true));
+						}
+					} else {
+						$this->response->redirect($this->url->link('sale/order', 'user_token=' . $this->session->data['user_token'], true));
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/common/profile.php">
+		<operation>
+			<search><![CDATA[
+				$data['username'] = '';
+			]]></search>
+			<add position="after" offset="1"><![CDATA[
+				if (isset($this->session->data['sales_agent_id'])) {
+					$this->load->model('extension/sale/sales_agents');
+					$sales_agent_info = $this->model_extension_sale_sales_agents->getSalesAgent($this->session->data['sales_agent_id']);
+					if ($sales_agent_info) {
+						$data['firstname'] = $sales_agent_info['firstname'];
+						$data['lastname'] = $sales_agent_info['lastname'];
+						$data['username'] = $sales_agent_info['username'];
+						$data['user_group'] = $sales_agent_info['user_group'] ;
+						if (is_file(DIR_IMAGE . $sales_agent_info['image'])) {
+							$data['image'] = $this->model_tool_image->resize($sales_agent_info['image'], 45, 45);
+						} else {
+							$data['image'] = '';
+						}
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/extension/module/quote_system.php">
+		<operation>
+			<search><![CDATA[
+				$quote_info = $this->model_extension_sale_quote_system->getQuote($this->request->get['quote_id']);
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['sales_agents_status'] = 0;
+				if ($this->config->get('module_sales_agents_status')) {
+					$data['sales_agents_status'] = 1;
+					$this->load->language('extension/module/sales_agents_language');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['orders'] = array();
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$this->load->model('extension/sale/sales_agents');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['orders'][] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$sales_agent = $this->model_extension_sale_sales_agents->getQuoteSalesAgentName($this->request->get['quote_id']);
+				} else {
+					$sales_agent = '';
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $quote_info['payment_method'],
+			]]></search>
+			<add position="after"><![CDATA[
+				'sales_agent'	=> $sales_agent,
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/customer/customer.php">
+		<operation>
+			<search index="5"><![CDATA[
+				if (isset($this->request->get['filter_name'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->request->get['filter_sales_agent_id'])) {
+					$filter_sales_agent_id = $this->request->get['filter_sales_agent_id'];
+				} else {
+					$filter_sales_agent_id = null;
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0,1,2,3,4,6,7,8,9"><![CDATA[
+				if (isset($this->request->get['filter_name'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->request->get['filter_sales_agent_id'])) {
+					$url .= '&filter_sales_agent_id=' . $this->request->get['filter_sales_agent_id'];
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['customers'] = array();
+			]]></search>
+			<add position="after"><![CDATA[
+				$data['sales_agents_status'] = 0;
+				if ($this->config->get('module_sales_agents_status') && $this->config->get('module_sales_agents_show_sales_agent')) {
+					$data['sales_agents_status'] = 1;
+					$this->load->model('extension/sale/sales_agents');
+					$data['sales_agents'] = $this->model_extension_sale_sales_agents->getSalesAgents();
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $filter_customer_group_id,
+			]]></search>
+			<add position="after"><![CDATA[
+				'filter_sales_agent_id'		=> $filter_sales_agent_id,
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['customers'][] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				$sales_agent = '';
+				if ($this->config->get('module_sales_agents_status') && $this->config->get('module_sales_agents_show_sales_agent')) {
+					$sales_agent = $this->model_extension_sale_sales_agents->getCustomerSalesAgentName($result['customer_id']);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $result['customer_group'],
+			]]></search>
+			<add position="after"><![CDATA[
+				'sales_agent'	=> $sales_agent,
+			]]></add>
+		</operation>
+		<operation>
+			<search index="1"><![CDATA[
+				$results = $this->model_customer_customer->getCustomers($filter_data);
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$this->load->model('extension/sale/sales_agents');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				$json[] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				$sales_agent = '';
+				if ($this->config->get('module_sales_agents_status')) {
+					$sales_agent = $this->model_extension_sale_sales_agents->getCustomerSalesAgentName($result['customer_id']);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['customers'] = array();
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status') && $this->config->get('module_sales_agents_show_sales_agent')) {
+					$this->load->language('extension/module/sales_agents_language');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['sort_customer_group'] = $this->url->link('customer/customer', 'user_token=' . $this->session->data['user_token'] . '&sort=customer_group' . $url, true);
+			]]></search>
+			<add position="after"><![CDATA[
+				$data['sort_sales_agent'] = $this->url->link('customer/customer', 'user_token=' . $this->session->data['user_token'] . '&sort=sales_agent' . $url, true);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['filter_customer_group_id'] = $filter_customer_group_id;
+			]]></search>
+			<add position="after"><![CDATA[
+				$data['filter_sales_agent_id'] = $filter_sales_agent_id;
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (isset($this->request->post['customer_group_id'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['sales_agents_status'] = 0;
+				if ($this->config->get('module_sales_agents_status')) {
+					$data['sales_agents_status'] = 1;
+					$this->load->language('extension/module/sales_agents_language');
+					$this->load->model('extension/sale/sales_agents');
+					$data['sales_agents'] = $this->model_extension_sale_sales_agents->getSalesAgents();
+					if (isset($this->request->post['sales_agent_id'])) {
+						$data['sales_agent_id'] = $this->request->post['sales_agent_id'];
+					} elseif (!empty($customer_info)) {
+						$data['sales_agent_id'] = $this->model_extension_sale_sales_agents->getCustomerSalesAgentId($customer_info['customer_id']);
+					} else {
+						$data['sales_agent_id'] = 0;
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/sale/order.php">
+		<operation>
+			<search><![CDATA[
+				$order_total = $this->model_sale_order->getTotalOrders($filter_data);
+			]]></search>
+			<add position="after"><![CDATA[
+				$data['sales_agents_status'] = 0;
+				if ($this->config->get('module_sales_agents_status') && $this->config->get('module_sales_agents_show_agent_order_list')) {
+					$data['sales_agents_status'] = 1;
+					$this->load->language('extension/module/sales_agents_language');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$results = $this->model_sale_order->getOrders($filter_data);
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_sales_agents_status') && $this->config->get('module_sales_agents_show_agent_order_list')) {
+					$this->load->model('extension/sale/sales_agents');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				$data['orders'][] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status') && $this->config->get('module_sales_agents_show_agent_order_list')) {
+					$sales_agent = $this->model_extension_sale_sales_agents->getOrderSalesAgentName($result['order_id']);
+				} else {
+					$sales_agent = '';
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $result['customer'],
+			]]></search>
+			<add position="after"><![CDATA[
+				'sales_agent'	=> $sales_agent,
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->response->setOutput($this->load->view('sale/order_info'
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['sales_agents_status'] = 0;
+				if ($this->config->get('module_sales_agents_status')) {
+					$data['sales_agents_status'] = 1;
+					$this->load->language('extension/module/sales_agents_language');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['order_id'] = $this->request->get['order_id'];
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$this->load->model('extension/sale/sales_agents');
+					$data['sales_agent'] = $this->model_extension_sale_sales_agents->getOrderSalesAgentName($this->request->get['order_id']);
+				} else {
+					$data['sales_agent'] = '';
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				$orders = array();
+			]]></search>
+			<add position="after"><![CDATA[
+				$data['sales_agents_status'] = 0;
+				if ($this->config->get('module_sales_agents_status')) {
+					$data['sales_agents_status'] = 1;
+					$this->load->model('extension/sale/sales_agents');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->response->setOutput($this->load->view('sale/order_invoice
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$this->load->language('extension/module/sales_agents_language');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="1"><![CDATA[
+				$data['orders'][] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$sales_agent = $this->model_extension_sale_sales_agents->getOrderSalesAgentName($order_info['order_id']);
+				} else {
+					$sales_agent = '';
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $order_info['payment_method'],
+			]]></search>
+			<add position="after"><![CDATA[
+				'sales_agent'	=> $sales_agent,
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/extension/sale/order_entry.php">
+		<operation>
+			<search><![CDATA[
+				if (!empty($order_info) || !empty($quote_info)) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$this->load->model('extension/sale/sales_agents');
+					$this->model_extension_sale_sales_agents->checkDb();
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->response->setOutput($this->load->view('extension/sale/order_entry_one_form'
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['sales_agents_status'] = 0;
+				if ($this->config->get('module_sales_agents_status')) {
+					$data['sales_agents_status'] = 1;
+					$this->load->language('extension/module/sales_agents_language');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['ref_no'] = $this->model_sale_order->getRefNo($order_info['order_id']);
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$data['customer_sales_agent'] = $this->model_extension_sale_sales_agents->getOrderSalesAgent($order_info['order_id']);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['ref_no'] = $this->model_sale_order->getRefNoQuote($order_info['quote_id']);
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$data['customer_sales_agent'] = $this->model_extension_sale_sales_agents->getQuoteSalesAgent($order_info['quote_id']);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['ref_no'] = '';
+			]]></search>
+			<add position="after"><![CDATA[
+				$data['customer_sales_agent'] = 0;
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				// Stores
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['sales_agents'] = array();
+				if ($this->config->get('module_sales_agents_status')) {
+					$this->load->model('extension/sale/sales_agents');
+					$data['sales_agents'] = $this->model_extension_sale_sales_agents->getSalesAgents();
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$results = $this->model_extension_sale_order_entry->getOeCustomers($filter_data);
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$this->load->model('extension/sale/sales_agents');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="1"><![CDATA[
+				$json[] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					if ($this->config->get('module_sales_agents_use_logged')) {
+						$sales_agent_id = $this->model_extension_sale_sales_agents->getLoggedSalesAgentId($this->user->getId());
+						if (!$sales_agent_id) {
+							$sales_agent_id = $this->model_extension_sale_sales_agents->getCustomerSalesAgentId($result['customer_id']);
+						}
+					} else {
+						$sales_agent_id = $this->model_extension_sale_sales_agents->getCustomerSalesAgentId($result['customer_id']);
+					}
+				} else {
+					$sales_agent_id = 0;
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $result['customer_group_id'],
+			]]></search>
+			<add position="after"><![CDATA[
+				'sales_agent_id'	=> $sales_agent_id,
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/user/user.php">
+		<operation>
+			<search><![CDATA[
+				$this->response->setOutput($this->load->view('user/user_form'
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['sales_agents_status'] = 0;
+				if ($this->config->get('module_sales_agents_status')) {
+					$data['sales_agents_status'] = 1;
+					$this->load->language('extension/module/sales_agents_language');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (isset($this->request->post['status'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					if (isset($this->request->post['sales_agent'])) {
+						$data['sales_agent'] = $this->request->post['sales_agent'];
+					} elseif (!empty($user_info)) {
+						$this->load->model('extension/sale/sales_agents');
+						$data['sales_agent'] = $this->model_extension_sale_sales_agents->getSalesAgentByUserId($user_info['user_id']);
+					} else {
+						$data['sales_agent'] = 0;
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/model/customer/customer.php">
+		<operation>
+			<search index="0"><![CDATA[
+				if (isset($data['address'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					if (!empty($data['sales_agent_id'])) {
+						$this->db->query("INSERT INTO `" . DB_PREFIX . "oe_sales_agents_to_customers` SET `sales_agent_id` = '" . (int)$data['sales_agent_id'] . "', `customer_id` = '" . (int)$customer_id . "'");
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="1"><![CDATA[
+				if (isset($data['address'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_sales_agents_to_customers` WHERE `customer_id` = '" . (int)$customer_id . "'");
+					if (isset($data['sales_agent_id']) && $data['sales_agent_id']) {
+						$this->db->query("INSERT INTO `" . DB_PREFIX . "oe_sales_agents_to_customers` SET `sales_agent_id` = '" . (int)$data['sales_agent_id'] . "', `customer_id` = '" . (int)$customer_id . "'");
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->db->query("DELETE FROM " . DB_PREFIX . "customer WHERE customer_id = '" . (int)$customer_id . "'");
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_sales_agents_to_customers` WHERE `customer_id` = '" . (int)$customer_id . "'");
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				$implode = array();
+			]]></search>
+			<add position="before"><![CDATA[
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$sql = "SELECT *, CONCAT
+			]]></search>
+			<add position="before"><![CDATA[
+				if (!empty($data['filter_sales_agent_id'])) {
+					$sql = "SELECT *, CONCAT(c.firstname, ' ', c.lastname) AS name, cgd.name AS customer_group FROM " . DB_PREFIX . "customer c LEFT JOIN " . DB_PREFIX . "customer_group_description cgd ON (c.customer_group_id = cgd.customer_group_id) LEFT JOIN `" . DB_PREFIX . "oe_sales_agents_to_customers` osa2c ON (c.customer_id = osa2c.customer_id) WHERE cgd.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+				} else {
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				if (!empty($data['filter_customer_group_id'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if (!empty($data['filter_sales_agent_id'])) {
+					$implode[] = "osa2c.sales_agent_id = '" . (int)$data['filter_sales_agent_id'] . "'";
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$sql = "SELECT COUNT(*) AS total FROM " . DB_PREFIX . "customer";
+			]]></search>
+			<add position="before"><![CDATA[
+				if (!empty($data['filter_sales_agent_id'])) {
+					$sql = "SELECT COUNT(*) AS total FROM " . DB_PREFIX . "customer c LEFT JOIN `" . DB_PREFIX . "oe_sales_agents_to_customers` osa2c ON (c.customer_id = osa2c.customer_id)";
+					$implode = array();
+					if (!empty($data['filter_name'])) {
+						$implode[] = "CONCAT(c.firstname, ' ', c.lastname) LIKE '%" . $this->db->escape($data['filter_name']) . "%'";
+					}
+					if (!empty($data['filter_email'])) {
+						$implode[] = "c.email LIKE '" . $this->db->escape($data['filter_email']) . "%'";
+					}
+					if (isset($data['filter_newsletter']) && !is_null($data['filter_newsletter'])) {
+						$implode[] = "c.newsletter = '" . (int)$data['filter_newsletter'] . "'";
+					}
+					if (!empty($data['filter_sales_agent_id'])) {
+						$implode[] = "osa2c.sales_agent_id = '" . (int)$data['filter_sales_agent_id'] . "'";
+					}
+					if (!empty($data['filter_customer_group_id'])) {
+						$implode[] = "c.customer_group_id = '" . (int)$data['filter_customer_group_id'] . "'";
+					}
+					if (!empty($data['filter_ip'])) {
+						$implode[] = "c.customer_id IN (SELECT customer_id FROM " . DB_PREFIX . "customer_ip WHERE ip = '" . $this->db->escape($data['filter_ip']) . "')";
+					}
+					if (isset($data['filter_status']) && !is_null($data['filter_status'])) {
+						$implode[] = "c.status = '" . (int)$data['filter_status'] . "'";
+					}
+					if (isset($data['filter_approved']) && !is_null($data['filter_approved'])) {
+						$implode[] = "c.approved = '" . (int)$data['filter_approved'] . "'";
+					}
+					if (!empty($data['filter_date_added'])) {
+						$implode[] = "DATE(c.date_added) = DATE('" . $this->db->escape($data['filter_date_added']) . "')";
+					}
+					if ($implode) {
+						$sql .= " WHERE " . implode(" AND ", $implode);
+					}
+				} else {
+			]]></add>
+		</operation>
+		<operation>
+			<search index="1"><![CDATA[
+				$query = $this->db->query($sql);
+			]]></search>
+			<add position="before"><![CDATA[
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/model/user/user.php">
+		<operation>
+			<search><![CDATA[
+				$this->db->query("INSERT INTO `" . DB_PREFIX . "user`
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_sales_agents_status') && isset($data['sales_agent'])) {
+					$user_id = $this->db->getLastId();
+					$this->db->query("INSERT INTO `" . DB_PREFIX . "oe_sales_agents` SET `user_id` = '" . (int)$user_id . "', `user_group_id` = '" . (int)$data['user_group_id'] . "', `firstname` = '" . $this->db->escape($data['firstname']) . "', `lastname` = '" . $this->db->escape($data['lastname']) . "', `username` = '" . $this->db->escape($data['username']) . "', `email` = '" . $this->db->escape($data['email']) . "', `salt` = '" . $this->db->escape($salt = substr(md5(uniqid(rand(), true)), 0, 9)) . "', `password` = '" . $this->db->escape(sha1($salt . sha1($salt . sha1($data['password'])))) . "', `image` = '" . $this->db->escape($data['image']) . "', `status` = '" . (int)$data['status'] . "', `date_added` = NOW()");
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if ($data['password']) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				$sales_agent = 0;
+				$sales_agent_new = 0;
+				if ($this->config->get('module_sales_agents_status') && isset($data['sales_agent'])) {
+					$sales_agent = 1;
+					$exists = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_sales_agents` WHERE `user_id` = '" . (int)$user_id . "'");
+					if ($exists->num_rows) {
+						$this->db->query("UPDATE `" . DB_PREFIX . "oe_sales_agents` SET `user_group_id` = '" . (int)$data['user_group_id'] . "', `firstname` = '" . $this->db->escape($data['firstname']) . "', `lastname` = '" . $this->db->escape($data['lastname']) . "', `username` = '" . $this->db->escape($data['username']) . "', `email` = '" . $this->db->escape($data['email']) . "', `image` = '" . $this->db->escape($data['image']) . "', `status` = '" . (int)$data['status'] . "' WHERE `user_id` = '" . (int)$user_id . "'");
+					} else {
+						$this->db->query("INSERT INTO `" . DB_PREFIX . "oe_sales_agents` SET `user_id` = '" . (int)$user_id . "', `user_group_id` = '" . (int)$data['user_group_id'] . "', `firstname` = '" . $this->db->escape($data['firstname']) . "', `lastname` = '" . $this->db->escape($data['lastname']) . "', `username` = '" . $this->db->escape($data['username']) . "', `email` = '" . $this->db->escape($data['email']) . "', `image` = '" . $this->db->escape($data['image']) . "', `status` = '" . (int)$data['status'] . "', `date_added` = NOW()");
+						$sales_agent_new = 1;
+					}
+				} else {
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_sales_agents` WHERE `user_id` = '" . (int)$user_id . "'");
+				}
+				if ($data['password']) {
+					if ($sales_agent) {
+						$this->db->query("UPDATE `" . DB_PREFIX . "oe_sales_agents` SET `salt` = '" . $this->db->escape($salt = substr(md5(uniqid(rand(), true)), 0, 9)) . "', `password` = '" . $this->db->escape(sha1($salt . sha1($salt . sha1($data['password'])))) . "' WHERE `user_id` = '" . (int)$user_id . "'");
+					} elseif ($sales_agent_new) {
+						$password_info = $this->db->query("SELECT `password`, `salt` FROM `" . DB_PREFIX . "user` WHERE `user_id` = '" . (int)$user_id . "'");
+						$this->db->query("UPDATE `" . DB_PREFIX . "oe_sales_agents` SET `salt` = '" . $this->db->escape($password_info->row['salt']) . "', `password` = '" . $this->db->escape($password_info->row['password']) . "' WHERE `user_id` = '" . (int)$user_id . "'");
+					}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->db->query("DELETE FROM `" . DB_PREFIX . "user` WHERE user_id = '" . (int)$user_id . "'");
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_sales_agents` WHERE `user_id` = '" . (int)$user_id . "'");
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/customer/customer_form.twig">
+		<operation>
+			<search><![CDATA[
+				<label class="col-sm-2 control-label" for="input-newsletter">{{ entry_newsletter }}</label>
+			]]></search>
+			<add position="before" offset="1"><![CDATA[
+				{% if sales_agents_status %}
+					<div class="form-group">
+						<label class="col-sm-2 control-label" for="input-sales-agent">{{ entry_sales_agent }}</label>
+						<div class="col-sm-10">
+							<select name="sales_agent_id" for="input-sales-agent" class="form-control">
+								<option value="0" selected="selected">{{ text_none }}</option>
+								{% if sales_agents %}
+									{% for sales_agent in sales_agents %}
+										{% if sales_agent_id == sales_agent.sales_agent_id %}
+											<option value="{{ sales_agent.sales_agent_id }}" selected="selected">{{ sales_agent.firstname }} {{ sales_agent.lastname }}</option>
+										{% else %}
+											<option value="{{ sales_agent.sales_agent_id }}">{{ sales_agent.firstname }} {{ sales_agent.lastname }}</option>
+										{% endif %}
+									{% endfor %}
+								{% endif %}
+							</select>
+						</div>
+					</div>
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/customer/customer_list.twig">
+		<operation>
+			<search><![CDATA[
+				<label class="control-label" for="input-date-added">{{ entry_date_added }}</label>
+			]]></search>
+			<add position="before" offset="1"><![CDATA[
+				{% if sales_agents_status %}
+					<div class="form-group">
+						<label class="control-label" for="input-sales-agent-id">{{ entry_sales_agent }}</label>
+						<select name="filter_sales_agent_id" id="input-sales-agent-id" class="form-control">
+							<option value="*"></option>
+							{% for sales_agent in sales_agents %}
+								{% if sales_agent.sales_agent_id == filter_sales_agent_id %}
+									<option value="{{ sales_agent.sales_agent_id }}" selected="selected">{{ sales_agent.firstname }} {{ sales_agent.lastname }}</option>
+								{% else %}
+									<option value="{{ sales_agent.sales_agent_id }}">{{ sales_agent.firstname }} {{ sales_agent.lastname }}</option>
+								{% endif %}
+							{% endfor %}
+						</select>
+					</div>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<td class="text-left">{% if sort == 'c.status' %}
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-left">
+						{% if sort == 'sales_agent' %}
+							<a href="{{ sort_sales_agent }}" class="{{ order|lower }}">{{ column_sales_agent }}</a>
+						{% else %}
+							<a href="{{ sort_sales_agent }}">{{ column_sales_agent }}</a>
+						{% endif %}
+					</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<td class="text-left">{{ customer.customer_group }}</td>
+			]]></search>
+			<add position="after"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-left">{{ customer.sales_agent }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				<td class="text-center" colspan="11">{{ text_no_results }}</td>
+			]]></search>
+			<add position="replace"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-center" colspan="12">{{ text_no_results }}</td>
+				{% else %}
+					<td class="text-center" colspan="11">{{ text_no_results }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				<td class="text-center" colspan="10">{{ text_no_results }}</td>
+			]]></search>
+			<add position="replace"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-center" colspan="11">{{ text_no_results }}</td>
+				{% else %}
+					<td class="text-center" colspan="10">{{ text_no_results }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				<td class="text-center" colspan="9">{{ text_no_results }}</td>
+			]]></search>
+			<add position="replace"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-center" colspan="10">{{ text_no_results }}</td>
+				{% else %}
+					<td class="text-center" colspan="9">{{ text_no_results }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				<td class="text-center" colspan="8">{{ text_no_results }}</td>
+			]]></search>
+			<add position="replace"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-center" colspan="9">{{ text_no_results }}</td>
+				{% else %}
+					<td class="text-center" colspan="8">{{ text_no_results }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				var filter_customer_group_id = $('select[name=\'filter_customer_group_id\']').val();
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if sales_agents_status %}
+					var filter_sales_agent_id = $('select[name=\'filter_sales_agent_id\']').val();
+					if (filter_sales_agent_id != '*') {
+						url += '&filter_sales_agent_id=' + encodeURIComponent(filter_sales_agent_id);
+					}
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/sale/order_info.twig">
+		<operation>
+			<search><![CDATA[
+				<td>{{ text_reward }}</td>
+			]]></search>
+			<add position="before" offset="1"><![CDATA[
+				{% if sales_agents_status %}
+					<tr>
+						<td>{{ text_sales_agent }}</td>
+						<td class="text-right" colspan="2">{{ sales_agent }}</td>
+					</tr>
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/sale/order_invoice.twig">
+		<operation error="skip">
+			<search><![CDATA[
+				<b>{{ text_order_id }}</b> {{ order.order_id }}<br />
+			]]></search>
+			<add position="after"><![CDATA[
+				{% if order.sales_agent %}
+					<b>{{ text_sales_agent }}</b> {{ order.sales_agent }}<br />
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				<td style="width: 60%;"><b>{{ order.order_id }}</b></td>
+			]]></search>
+			<add position="after" offset="1"><![CDATA[
+				{% if order.sales_agent %}
+					<tr>
+						<td style="width:40%;"><b>{{ text_sales_agent }}</b></td>
+						<td style="width:60%;">{{ order['sales_agent'] }}</td>
+					</tr>
+				<?php } ?>
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/sale/order_list.twig">
+		<operation>
+			<search><![CDATA[
+				<td class="text-left">{% if sort == 'o.date_modified' %}
+			]]></search>
+			<add position="after"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-left">{{ column_sales_agent }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<td class="text-left">{{ order.date_modified }}</td>
+			]]></search>
+			<add position="after"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-left">{{ order.sales_agent }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				<td class="text-center" colspan="12">{{ text_no_results }}</td>
+			]]></search>
+			<add position="replace"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-center" colspan="13">{{ text_no_results }}</td>
+				{% else %}
+					<td class="text-center" colspan="12">{{ text_no_results }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				<td class="text-center" colspan="11">{{ text_no_results }}</td>
+			]]></search>
+			<add position="replace"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-center" colspan="12">{{ text_no_results }}</td>
+				{% else %}
+					<td class="text-center" colspan="11">{{ text_no_results }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				<td class="text-center" colspan="10">{{ text_no_results }}</td>
+			]]></search>
+			<add position="replace"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-center" colspan="11">{{ text_no_results }}</td>
+				{% else %}
+					<td class="text-center" colspan="10">{{ text_no_results }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				<td class="text-center" colspan="9">{{ text_no_results }}</td>
+			]]></search>
+			<add position="replace"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-center" colspan="10">{{ text_no_results }}</td>
+				{% else %}
+					<td class="text-center" colspan="9">{{ text_no_results }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				<td class="text-center" colspan="8">{{ text_no_results }}</td>
+			]]></search>
+			<add position="replace"><![CDATA[
+				{% if sales_agents_status %}
+					<td class="text-center" colspan="9">{{ text_no_results }}</td>
+				{% else %}
+					<td class="text-center" colspan="8">{{ text_no_results }}</td>
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/extension/sale/order_entry_one_form.twig">
+		<operation>
+			<search><![CDATA[
+				<label class="col-sm-3 control-label" for="input-ref-no">{{ entry_ref_no }}</label>
+			]]></search>
+			<add position="before" offset="1"><![CDATA[
+				{% if sales_agents_status %}
+					<div class="form-group">
+						<label class="col-sm-3 control-label" for="input-sales-agent">{{ entry_sales_agent }}</label>
+						<div class="col-sm-8">
+							<select name="sales_agent" id="input-sales-agent" class="form-control" />
+								<option value="" selected="selected"></option>
+								{% for sales_agent in sales_agents %}
+									{% if sales_agent.firstname %}
+										{% if customer_sales_agent == sales_agent.sales_agent_id %}
+											<option value="{{ sales_agent.sales_agent_id }}" selected="selected">{{ sales_agent.firstname }} {{ sales_agent.lastname }}</option>
+										{% else %}
+											<option value="{{ sales_agent.sales_agent_id }}">{{ sales_agent.firstname }} {{ sales_agent.lastname }}</option>
+										{% endif %}
+									{% else %}
+										{% if customer_sales_agent == sales_agent.sales_agent_id %}
+											<option value="{{ sales_agent.sales_agent_id }}" selected="selected">{{ sales_agent.username }}</option>
+										{% else %}
+											<option value="{{ sales_agent.sales_agent_id }}">{{ sales_agent.username }}</option>
+										{% endif %}
+									{% endif %}
+								{% endfor %}
+							</select>
+						</div>
+					</div>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				customer_group: '',
+			]]></search>
+			<add position="after"><![CDATA[
+				sales_agent_id: '0',
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				customer_group_id: item['customer_group_id'],
+			]]></search>
+			<add position="after"><![CDATA[
+				sales_agent_id: item['sales_agent_id'],
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$('#customer-information select[name=\'customer_group_id\']').val(item['customer_group_id']);
+			]]></search>
+			<add position="after"><![CDATA[
+				{% if sales_agents_status %}
+					$('#tab-total select[name=\'sales_agent\']').val(item['sales_agent_id']);
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/user/user_form.twig">
+		<operation>
+			<search><![CDATA[
+				<label class="col-sm-2 control-label" for="input-firstname">{{ entry_firstname }}</label>
+			]]></search>
+			<add position="before" offset="1"><![CDATA[
+				{% if sales_agents_status %}
+					<div class="form-group">
+						<label class="col-sm-2 control-label" for="input-sales-agent">{{ entry_sales_agent }}</label>
+						<div class="col-sm-10">
+							<div class="checkbox">
+								<label>
+									{% if sales_agent %}
+										<input type="checkbox" name="sales_agent" value="1" checked="checked" />
+									{% else %}
+										<input type="checkbox" name="sales_agent" value="1" />
+									{% endif %}
+								</label>
+							</div>
+						</div>
+					</div>
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/api/order.php">
+		<operation>
+			<search><![CDATA[
+				$order_data['comment'] = '';
+			]]></search>
+			<add position="after" offset="1"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$order_data['sales_agent'] = (isset($this->request->post['sales_agent']) ? $this->request->post['sales_agent'] : 0);
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/extension/api/quote_system.php">
+		<operation>
+			<search><![CDATA[
+				$order_data['comment'] = '';
+			]]></search>
+			<add position="after" offset="1"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$order_data['sales_agent'] = (isset($this->request->post['sales_agent']) ? $this->request->post['sales_agent'] : 0);
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/mail/order.php">
+		<operation>
+			<search><![CDATA[
+				$data['payment_method'] = $order_info['payment_method'];
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					$this->load->model('extension/module/sales_agents');
+					$data['text_sales_agent'] = $language->get('text_new_sales_agent');
+					$data['sales_agent'] = $this->model_extension_module_sales_agents->getOrderSalesAgent($order_info['order_id']);
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/language/en-gb/mail/order_add.php">
+		<operation>
+			<search><![CDATA[
+				// Text
+			]]></search>
+			<add position="after"><![CDATA[
+				$_['text_new_sales_agent']		= 'Sales Agent: ';
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/checkout/order.php">
+		<operation>
+			<search><![CDATA[
+				if (isset($data['products'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status')) {
+					if (isset($data['sales_agent'])) {
+						$this->db->query("UPDATE `" . DB_PREFIX . "oe_order` SET `sales_agent_id` = '" . (int)$data['sales_agent'] . "' WHERE `oe_order_id` = '" . (int)$oe_order_id . "'");
+					} else {
+						if ($data['customer_id']) {
+							$sales_agent_query = $this->db->query("SELECT `sales_agent_id` FROM `" . DB_PREFIX . "oe_sales_agents_to_customers` WHERE `customer_id` = '" . (int)$data['customer_id'] . "'");
+							if ($sales_agent_query->num_rows) {
+								$this->db->query("UPDATE `" . DB_PREFIX . "oe_order` SET `sales_agent_id` = '" . (int)$sales_agent_query->row['sales_agent_id'] . "' WHERE `oe_order_id` = '" . (int)$oe_order_id . "'");
+							}
+						}
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/extension/checkout/quote_system.php">
+		<operation>
+			<search><![CDATA[
+				if (isset($quote_data['totals'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_sales_agents_status') && isset($quote_data['sales_agent'])) {
+					$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote` SET `sales_agent_id` = '" . (int)$quote_data['sales_agent'] . "' WHERE `quote_id` = '" . (int)$quote_id . "'");
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/view/theme/*/template/mail/order_add.twig">
+		<operation>
+			<search><![CDATA[
+				<b>{{ text_telephone }}</b> {{ telephone }}<br />
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if sales_agents_status %}
+					<b>{{ text_sales_agent }}</b> {{ sales_agent }}<br />
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="system/library/cart/user.php">
+		<operation>
+			<search><![CDATA[
+				unset($this->session->data['user_id']);
+			]]></search>
+			<add position="after"><![CDATA[
+				unset($this->session->data['sales_agent_id']);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->logout();
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				$sales_agents_installed = $this->db->query("SHOW TABLES LIKE '" . DB_PREFIX . "oe_sales_agents'");
+				if ($sales_agents_installed->num_rows) {
+					$sales_agent_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_sales_agents` WHERE `user_id` = '" . (int)$this->session->data['user_id'] . "' AND `status` = '1'");
+					if ($sales_agent_query->num_rows) {
+						$this->user_id = $sales_agent_query->row['user_id'];
+						$this->username = $sales_agent_query->row['username'];
+						$this->user_group_id = $sales_agent_query->row['user_group_id'];
+						$user_group_query = $this->db->query("SELECT `permission` FROM `" . DB_PREFIX . "user_group` WHERE `user_group_id` = '" . (int)$sales_agent_query->row['user_group_id'] . "'");
+						$permissions = unserialize($user_group_query->row['permission']);
+						if (is_array($permissions)) {
+							foreach ($permissions as $key => $value) {
+								$this->permission[$key] = $value;
+							}
+						}
+					} else {
+						$this->logout();
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				return false;
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				$sales_agents_installed = $this->db->query("SHOW TABLES LIKE '" . DB_PREFIX . "oe_sales_agents'");
+				if ($sales_agents_installed->num_rows) {
+					$sales_agent_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_sales_agents` WHERE `username` = '" . $this->db->escape($username) . "' AND (`password` = SHA1(CONCAT(salt, SHA1(CONCAT(salt, SHA1('" . $this->db->escape($password) . "'))))) OR `password` = '" . $this->db->escape(md5($password)) . "') AND `status` = '1'");
+					if ($sales_agent_query->num_rows) {
+						$this->session->data['user_id'] = $sales_agent_query->row['user_id'];
+						$this->session->data['sales_agent_id'] = $sales_agent_query->row['sales_agent_id'];
+						$this->user_id = $sales_agent_query->row['user_id'];
+						$this->username = $sales_agent_query->row['username'];
+						$this->user_group_id = $sales_agent_query->row['user_group_id'];
+						$user_group_query = $this->db->query("SELECT `permission` FROM `" . DB_PREFIX . "user_group` WHERE `user_group_id` = '" . (int)$sales_agent_query->row['user_group_id'] . "'");
+						$permissions = unserialize($user_group_query->row['permission']);
+						if (is_array($permissions)) {
+							foreach ($permissions as $key => $value) {
+								$this->permission[$key] = $value;
+							}
+						}
+						return true;
+					} else {
+						return false;
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+</modification>
