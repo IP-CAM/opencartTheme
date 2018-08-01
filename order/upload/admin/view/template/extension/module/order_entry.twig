@@ -1,0 +1,480 @@
+{{ header }}{{ column_left }}
+<div id="content">
+	<div class="page-header">
+		<div class="container-fluid">
+			<div class="pull-right">
+				<button type="submit" form="form-order-entry" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+				<a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+			</div>
+			<h1>{{ heading_title }}</h1>
+			<ul class="breadcrumb">
+				{% for breadcrumb in breadcrumbs %}
+					<li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+				{% endfor %}
+			</ul>
+		</div>
+	</div>
+	<div class="container-fluid">
+		{% if error_warning %}
+			<div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}<button type="button" class="close" data-dismiss="alert">&times;</button></div>
+		{% endif %}
+		{% if success %}
+			<div class="alert alert-success"><i class="fa fa-check-circle"></i> {{ success }}<button type="button" class="close" data-dismiss="alert">&times;</button></div>
+		{% endif %}
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
+			</div>
+			<div class="panel-body">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title">{{ text_maintenance }}</h3>
+					</div>
+					<div class="panel-body">
+						<div class="col-sm-12 form-group">
+							<div class="col-sm-2">
+								<a href="{{ update_tables }}" type="button" id="button-update-tables" class="btn btn-primary"><i class="fa fa-pencil"></i> {{ button_update_tables }}</a>
+							</div>
+							<label class="col-sm-10" style="padding-top:3px;">{{ text_update_tables }}</label>
+						</div>
+						<div class="col-sm-12 form-group">
+							<div class="col-sm-2">
+								<a href="{{ update_orders }}" type="button" id="button-update-orders" class="btn btn-primary"><i class="fa fa-pencil"></i> {{ button_update_orders }}</a>
+							</div>
+							<label class="col-sm-10" style="padding-top:3px;">{{ text_update_orders }}</label>
+						</div>
+					</div>
+				</div>
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title">{{ text_installed_modules }}</h3>
+					</div>
+					<div class="panel-body">
+						<table class="table table-bordered table-hover">
+							<thead>
+								<tr>
+									<td class="text-left">{{ column_module_name }}</td>
+									<td class="text-left">{{ column_module_status }}</td>
+									<td class="text-left">{{ column_action }}</td>
+								</tr>
+							</thead>
+							<tbody>
+								{% if oe_modules %}
+									{% for module in oe_modules %}
+										<tr>
+											<td class="text-left">{{ module.name }}</td>
+											<td class="text-left">{{ module.status }}</td>
+											<td class="text-left">
+												{% for module_action in module.action %}
+													[ <a href="{{ module_action.href }}">{{ module_action.text }}</a> ]
+												{% endfor %}
+											</td>
+										</tr>
+									{% endfor %}
+								{% else %}
+									<tr>
+										<td class="text-center" colspan="3">{{ text_no_modules }}</td>
+									</tr>
+								{% endif %}
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title">{{ text_oe_settings }}</h3>
+					</div>
+					<div class="panel-body">
+						<form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-order-entry" class="form-horizontal">
+							<ul class="nav nav-tabs nav-justified">
+								<li class="active"><a href="#tab-general-settings" data-toggle="tab">{{ tab_general_settings }}</a></li>
+								<li><a href="#tab-customer-settings" data-toggle="tab">{{ tab_customer_settings }}</a></li>
+								<li><a href="#tab-product-settings" data-toggle="tab">{{ tab_product_settings }}</a></li>
+							</ul>
+							<div class="tab-content">
+								<div class="tab-pane active" id="tab-general-settings">
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for ="input-status">{{ entry_status }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_status" id="input-status" class="form-control">
+												{% if module_order_entry_status %}
+													<option value="0">{{ text_disabled }}</option>
+													<option value="1" selected="selected">{{ text_enabled }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_disabled }}</option>
+													<option value="1">{{ text_enabled }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_create_orders }}">{{ entry_create_orders }}</span></label>
+										<div class="col-sm-10">
+											{% for user_group in user_groups %}
+												<div class="checkbox">
+													<label>
+														{% if user_group.user_group_id in module_order_entry_create_orders %}
+															<input type="checkbox" name="module_order_entry_create_orders[]" value="{{ user_group.user_group_id }}" checked="checked" />
+															{{ user_group.name }}
+														{% else %}
+															<input type="checkbox" name="module_order_entry_create_orders[]" value="{{ user_group.user_group_id }}" />
+															{{ user_group.name }}
+														{% endif %}
+													</label>
+												</div>
+											{% endfor %}
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_edit_orders }}">{{ entry_edit_orders }}</span></label>
+										<div class="col-sm-10">
+											{% for user_group in user_groups %}
+												<div class="checkbox">
+													<label>
+														{% if user_group.user_group_id in module_order_entry_edit_orders %}
+															<input type="checkbox" name="module_order_entry_edit_orders[]" value="{{ user_group.user_group_id }}" checked="checked" />
+															{{ user_group.name }}
+														{% else %}
+															<input type="checkbox" name="module_order_entry_edit_orders[]" value="{{ user_group.user_group_id }}" />
+															{{ user_group.name }}
+														{% endif %}
+													</label>
+												</div>
+											{% endfor %}
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_delete_orders }}">{{ entry_delete_orders }}</span></label>
+										<div class="col-sm-10">
+											{% for user_group in user_groups %}
+												<div class="checkbox">
+													<label>
+														{% if user_group.user_group_id in module_order_entry_delete_orders %}
+															<input type="checkbox" name="module_order_entry_delete_orders[]" value="{{ user_group.user_group_id }}" checked="checked" />
+															{{ user_group.name }}
+														{% else %}
+															<input type="checkbox" name="module_order_entry_delete_orders[]" value="{{ user_group.user_group_id }}" />
+															{{ user_group['name'] }}
+														{% endif %}
+													</label>
+												</div>
+											{% endfor %}
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-customer-group">{{ entry_customer_group }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_customer_group" id="input-customer-group" class="form-control">
+												<option value="0" selected="selected">{{ text_none }}</option>
+												{% for customer_group in customer_groups %}
+													{% if customer_group.customer_group_id == module_order_entry_customer_group %}
+														<option value="{{ customer_group.customer_group_id }}" selected="selected">{{ customer_group.name }}</option>
+													{% else %}
+														<option value="{{ customer_group.customer_group_id }}">{{ customer_group.name }}</option>
+													{% endif %}
+												{% endfor %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-order-status">{{ entry_order_status }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_order_status" id="input-order-status" class="form-control">
+												<option value="0" selected="selected">{{ text_none }}</option>
+												{% for order_status in order_statuses %}
+													{% if order_status.order_status_id == module_order_entry_order_status %}
+														<option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+													{% else %}
+														<option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+													{% endif %}
+												{% endfor %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-save-new-customer"><span data-toggle="tooltip" title="{{ help_save_new_customer }}">{{ entry_save_new_customer }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_save_new_customer" id="input-save-new-customer" class="form-control" />
+												{% if module_order_entry_save_new_customer %}
+													<option value="0">{{ text_unchecked }}</option>
+													<option value="1" selected="selected">{{ text_checked }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_unchecked }}</option>
+													<option value="1">{{ text_checked }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-order-notification"><span data-toggle="tooltip" title="{{ help_order_notification }}">{{ entry_order_notification }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_order_notification" id="input-order-notification" class="form-control" />
+												{% if module_order_entry_order_notification %}
+													<option value="0">{{ text_checked }}</option>
+													<option value="1" selected="selected">{{ text_unchecked }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_checked }}</option>
+													<option value="1">{{ text_unchecked }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+								</div>
+								<div class="tab-pane" id="tab-customer-settings">
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-company-search"><span data-toggle="tooltip" title="{{ help_company_search }}">{{ entry_company_search }}</span></label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_company_search" id="input-company-search" class="form-control">
+												{% if module_order_entry_company_search %}
+													<option value="0">{{ text_disabled }}</option>
+													<option value="1" selected="selected">{{ text_enabled }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_disabled }}</option>
+													<option value="1">{{ text_enabled }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-previous-orders"><span data-toggle="tooltip" title="{{ help_previous_orders }}">{{ entry_previous_orders }}</span></label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_previous_orders" id="input-previous-orders" class="form-control">
+												{% if module_order_entry_previous_orders %}
+													<option value="0">{{ text_no }}</option>
+													<option value="1" selected="selected">{{ text_yes }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_no }}</option>
+													<option value="1">{{ text_yes }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-previous-count"><span data-toggle="tooltip" title="{{ help_previous_count }}">{{ entry_previous_count }}</span></label>
+										<div class="col-sm-10">
+											<input type="text" name="module_order_entry_previous_count" value="{{ module_order_entry_previous_count }}" id="input-previous-count" placeholder="{{ entry_previous_count }}" class="form-control" />
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-require-lastname">{{ entry_require_lastname }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_require_lastname" id="input-require-lastname" class="form-control">
+												{% if module_order_entry_require_lastname %}
+													<option value="0">{{ text_not_required }}</option>
+													<option value="1" selected="selected">{{ text_required }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_not_required }}</option>
+													<option value="1">{{ text_required }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-require-telephone">{{ entry_require_telephone }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_require_telephone" id="input-require-telephone" class="form-control">
+												{% if module_order_entry_require_telephone %}
+													<option value="0">{{ text_not_required }}</option>
+													<option value="1" selected="selected">{{ text_required }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_not_required }}</option>
+													<option value="1">{{ text_required }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-require-email">{{ entry_require_email }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_require_email" id="input-require-email" class="form-control">
+												{% if module_order_entry_require_email %}
+													<option value="0">{{ text_not_required }}</option>
+													<option value="1" selected="selected">{{ text_required }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_not_required }}</option>
+													<option value="1">{{ text_required }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-require-city">{{ entry_require_city }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_require_city" id="input-require-city" class="form-control">
+												{% if module_order_entry_require_city %}
+													<option value="0">{{ text_not_required }}</option>
+													<option value="1" selected="selected">{{ text_required }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_not_required }}</option>
+													<option value="1">{{ text_required }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-require-zone">{{ entry_require_zone }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_require_zone" id="input-require-zone" class="form-control">
+												{% if module_order_entry_require_zone %}
+													<option value="0">{{ text_not_required }}</option>
+													<option value="1" selected="selected">{{ text_required }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_not_required }}</option>
+													<option value="1">{{ text_required }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+								</div>
+								<div class="tab-pane" id="tab-product-settings">
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-selected-store"><span data-toggle="tooltip" title="{{ help_selected_store }}">{{ entry_selected_store }}</span></label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_selected_store" id="input-selected-store" class="form-control">
+												{% if module_order_entry_selected_store %}
+													<option value="0">{{ text_disabled }}</option>
+													<option value="1" selected="selected">{{ text_enabled }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_disabled }}</option>
+													<option value="1">{{ text_enabled }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-allow-disabled">{{ entry_allow_disabled }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_allow_disabled" id="input-allow-disabled" class="form-control">
+												{% if module_order_entry_allow_disabled %}
+													<option value="0">{{ text_no }}</option>
+													<option value="1" selected="selected">{{ text_yes }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_no }}</option>
+													<option value="1">{{ text_yes }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-allow-zero-qty">{{ entry_allow_zero_qty }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_allow_zero_qty" id="input-allow-zero-qty" class="form-control">
+												{% if module_order_entry_allow_zero_qty %}
+													<option value="0">{{ text_no }}</option>
+													<option value="1" selected="selected">{{ text_yes }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_no }}</option>
+													<option value="1">{{ text_yes }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="input-fulltext-search">{{ entry_fulltext_search }}</label>
+										<div class="col-sm-10">
+											<select name="module_order_entry_fulltext_search" id="input-fulltext-search" class="form-control">
+												{% if module_order_entry_fulltext_search %}
+													<option value="0">{{ text_no }}</option>
+													<option value="1" selected="selected">{{ text_yes }}</option>
+												{% else %}
+													<option value="0" selected="selected">{{ text_no }}</option>
+													<option value="1">{{ text_yes }}</option>
+												{% endif %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_product_columns }}">{{ entry_product_columns }}</span></label>
+										<div class="col-sm-10">
+											<div class="checkbox">
+												<label>
+													{% if 'image' in module_order_entry_product_columns %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="image" checked="checked" />
+													{% else %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="image" />
+													{% endif %}
+													{{ text_image }}
+												</label>
+											</div>
+											<div class="checkbox">
+												<label>
+													{% if 'option' in module_order_entry_product_columns %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="option" checked="checked" />
+													{% else %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="option" />
+													{% endif %}
+													{{ text_option }}
+												</label>
+											</div>
+											<div class="checkbox">
+												<label>
+													{% if 'price' in module_order_entry_product_columns %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="price" checked="checked" />
+													{% else %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="price" />
+													{% endif %}
+													{{ text_price }}
+												</label>
+											</div>
+											<div class="checkbox">
+												<label>
+													{% if 'pricet' in module_order_entry_product_columns %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="pricet" checked="checked" />
+													{% else %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="pricet" />
+													{% endif %}
+													{{ text_pricet }}
+												</label>
+											</div>
+											<div class="checkbox">
+												<label>
+													{% if 'total' in module_order_entry_product_columns %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="total" checked="checked" />
+													{% else %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="total" />
+													{% endif %}
+													{{ text_total }}
+												</label>
+											</div>
+											<div class="checkbox">
+												<label>
+													{% if 'totalt' in module_order_entry_product_columns %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="totalt" checked="checked" />
+													{% else %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="totalt" />
+													{% endif %}
+													{{ text_totalt }}
+												</label>
+											</div>
+											<div class="checkbox">
+												<label>
+													{% if 'cost' in module_order_entry_product_columns %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="cost" checked="checked" />
+													{% else %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="cost" />
+													{% endif %}
+													{{ text_cost }}
+												</label>
+											</div>
+											<div class="checkbox">
+												<label>
+													{% if 'notax' in module_order_entry_product_columns %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="notax" checked="checked" />
+													{% else %}
+														<input type="checkbox" name="module_order_entry_product_columns[]" value="notax" />
+													{% endif %}
+													{{ text_notax }}
+												</label>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+{{ footer }}

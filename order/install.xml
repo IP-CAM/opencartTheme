@@ -1,0 +1,1879 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>Order Entry System</name>
+    <id>order_entry_system</id>
+    <version>1.5.1.0</version>
+	<author>ACFD Development</author>
+    <link>mailto:develop@acfddev.com</link>
+	<code>oe-order-entry-system</code>
+
+	<file path="admin/controller/catalog/product.php">
+		<operation>
+			<search><![CDATA[
+				$this->response->setOutput($this->load->view('catalog/product_form
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['oe_status'] = 0;
+				if ($this->config->get('module_order_entry_status')) {
+					$data['oe_status'] = 1;
+					$this->load->language('extension/module/order_entry_product');
+					$this->load->model('extension/sale/order_entry');
+					$data['oe_cost'] = '';
+					if (isset($this->request->post['oe_cost'])) {
+						$data['oe_cost'] = $this->request->post['oe_cost'];
+					} elseif (isset($this->request->get['product_id'])) {
+						$data['oe_cost'] = $this->model_extension_sale_order_entry->getOeCost($this->request->get['product_id']);
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/design/layout.php">
+		<operation>
+			<search><![CDATA[
+				foreach ($extensions as $code) {
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($code != "custom_products" && $code != "payment_processor") {
+			]]></add>
+		</operation>
+		<operation>
+			<search index="1"><![CDATA[
+				$data['header'] = $this->load->controller('common/header');
+			]]></search>
+			<add position="before"><![CDATA[
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/sale/order.php">
+		<operation>
+			<search><![CDATA[
+				public function index() {
+			]]></search>
+			<add position="after"><![CDATA[
+				unset($this->session->data['oe']);
+				unset($this->session->data['order_id']);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->response->setOutput($this->load->view('sale/order_list', $data));
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['user_group_id'] = $this->user->getGroupId();
+				if (isset($this->session->data['success'])) {
+					$data['success'] = $this->session->data['success'];
+					unset($this->session->data['success']);
+				} else {
+					$data['success'] = '';
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->url->link('sale/order/edit', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $result['order_id'] . $url, true)
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				$this->url->link('extension/sale/order_entry/edit', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $result['order_id'] . $url, true)
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->url->link('sale/order/edit', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . (int)$this->request->get['order_id'], true);
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				$this->url->link('extension/sale/order_entry/edit', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . (int)$this->request->get['order_id'], true);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->url->link('sale/order/add', 'user_token=' . $this->session->data['user_token'] . $url, true);
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				$this->url->link('extension/sale/order_entry/add', 'user_token=' . $this->session->data['user_token'], true);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->url->link('sale/order/info', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $result['order_id'] . $url, true),
+			]]></search>
+			<add position="after"><![CDATA[
+				'copy'		=> $this->url->link('extension/sale/order_entry/copy', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $result['order_id'] . $url, true),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$product_info = $this->model_catalog_product->getProduct($product['product_id']);
+			]]></search>
+			<add position="after"><![CDATA[
+				if (!$product_info) {
+					$product_info = $this->model_sale_order->getOeOrderProducts($order_id, $product['order_product_id']);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $product_info['name'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> $product['name'],
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $product_info['model'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> $product['model'],
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $product_info['jan'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> (isset($product_info['jan']) ? $product_info['jan'] : ''),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $product_info['ean'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> (isset($product_info['ean']) ? $product_info['ean'] : ''),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $product_info['isbn'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> (isset($product_info['isbn']) ? $product_info['isbn'] : ''),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $product_info['mpn'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> (isset($product_info['mpn']) ? $product_info['mpn'] : ''),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->error['warning'] = $this->language->get('error_permission');
+			]]></search>
+			<add position="after" offset="1"><![CDATA[
+				$oe_delete_orders = $this->config->get('module_order_entry_delete_orders');
+				if (!is_array($oe_delete_orders) || !in_array($this->user->getGroupId(), $oe_delete_orders)) {
+					$this->error['warning'] = $this->language->get('error_delete_permission');
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/startup/permission.php">
+		<operation>
+			<search><![CDATA[
+				'extension/payment',
+			]]></search>
+			<add position="after"><![CDATA[
+				'extension/sale',
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/language/en-gb/sale/order.php">
+		<operation>
+			<search><![CDATA[
+				$_['heading_title']
+			]]></search>
+			<add position="before"><![CDATA[
+				$_['error_order_entry_permission']				= 'Warning: You do not have permission to modify order entry system!';
+				$_['error_delete_permission']					= 'Warning: You do not have permission to delete orders!';
+				$_['button_add']								= 'New Order';
+				$_['button_copy']								= 'Copy Order';
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/model/catalog/product.php">
+		<operation>
+			<search index="0"><![CDATA[
+				if (isset($data['image'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_order_entry_status')) {
+					$this->db->query("INSERT INTO `" . DB_PREFIX . "oe_product_cost` SET `product_id` = '" . (int)$product_id . "', `cost` = '" . (float)$data['oe_cost'] . "'");
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="1"><![CDATA[
+				if (isset($data['image'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_order_entry_status')) {
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_product_cost` WHERE `product_id` = '" . (int)$product_id . "'");
+					$this->db->query("INSERT INTO `" . DB_PREFIX . "oe_product_cost` SET `product_id` = '" . (int)$product_id . "', `cost` = '" . (float)$data['oe_cost'] . "'");
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/model/sale/order.php">
+		<operation>
+			<search><![CDATA[
+				public function getOrderProducts($order_id) {
+			]]></search>
+			<add position="before"><![CDATA[
+				public function getRefNo($order_id) {
+					$query = $this->db->query("SELECT `ref_no` FROM `" . DB_PREFIX . "oe_order` WHERE `order_id` = '" . (int)$order_id . "'");
+					if ($query->num_rows) {
+						return $query->row['ref_no'];
+					} else {
+						return;
+					}
+				}
+				public function getRefNoQuote($quote_id) {
+					$query = $this->db->query("SELECT `ref_no` FROM `" . DB_PREFIX . "oe_quote` WHERE `quote_id` = '" . (int)$quote_id . "'");
+					if ($query->num_rows) {
+						return $query->row['ref_no'];
+					} else {
+						return;
+					}
+				}
+				public function getNoTax($order_id) {
+					$query = $this->db->query("SELECT `no_tax` FROM `" . DB_PREFIX . "oe_order` WHERE `order_id` = '" . (int)$order_id . "'");
+					if ($query->num_rows) {
+						return $query->row['no_tax'];
+					} else {
+						return;
+					}
+				}
+				public function getNoTaxQuote($quote_id) {
+					$query = $this->db->query("SELECT `no_tax` FROM `" . DB_PREFIX . "oe_quote` WHERE `quote_id` = '" . (int)$quote_id . "'");
+					if ($query->num_rows) {
+						return $query->row['no_tax'];
+					} else {
+						return;
+					}
+				}
+				public function getOeOrderProducts($order_id, $order_product_id) {
+					$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_order_product` WHERE `order_product_id` = '" . (int)$order_product_id . "' AND `order_id` = '" . (int)$order_id . "'");
+					if ($query->num_rows) {
+						return $query->row;
+					} else {
+						return;
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/catalog/product_form.twig">
+		<operation>
+			<search><![CDATA[
+				<label class="col-sm-2 control-label" for="input-tax-class">{{ entry_tax_class }}</label>
+			]]></search>
+			<add position="before" offset="1"><![CDATA[
+				{% if oe_status %}
+					<div class="form-group">
+						<label class="col-sm-2 control-label" for="input-oe-cost">{{ entry_oe_cost }}</label>
+						<div class="col-sm-10">
+							<input type="text" name="oe_cost" value="{{ oe_cost }}" placeholder="{{ entry_oe_cost }}" id="input-oe-cost" class="form-control" />
+						</div>
+					</div>
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/sale/order_list.twig">
+		<operation>
+			<search><![CDATA[
+				<a href="{{ add }}" data-toggle="tooltip" title="{{ button_add }}" class="btn btn-primary"><i class="fa fa-plus"></i></a>
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				<a href="{{ add }}" data-toggle="tooltip" title="{{ button_add }}" class="btn btn-primary"><i class="fa fa-plus"></i> {{ button_add }}</a>
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<div class="container-fluid">
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if success %}
+					<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success }} <button type="button" class="close" data-dismiss="alert">&times;</button></div>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<li><a href="{{ order.edit }}"><i class="fa fa-pencil"></i> {{ button_edit }}</a></li>
+			]]></search>
+			<add position="after"><![CDATA[
+				<li><a href="{{ order.copy }}"><i class="fa fa-copy"></i> {{ button_copy }}</a></li>
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/sale/order_list_aepro.tpl">
+		<operation>
+			<search><![CDATA[
+				<a href="<?php echo $add; ?>" data-toggle="tooltip" title="<?php echo $button_add; ?>" class="btn btn-primary"><i class="fa fa-plus"></i></a>
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				<a href="<?php echo $add; ?>" data-toggle="tooltip" title="<?php echo $button_add; ?>" class="btn btn-primary"><i class="fa fa-plus"></i> <?php echo $button_add; ?></a>
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/api/*.php">
+		<operation>
+			<search><![CDATA[
+				$this->response->addHeader('Content-Type: application/json');
+			]]></search>
+			<add position="before"><![CDATA[
+				/*if (isset($json) && is_array($json)) {
+					foreach ($json as $key => $value) {
+						if (is_string($value)) {
+							$json[$key] = utf8_encode($value);
+						} elseif (is_array($value)) {
+							foreach ($value as $k => $v) {
+								if (is_string($v)) {
+									$json[$key][$k] = utf8_encode($v);
+								} elseif (is_array($v)) {
+									foreach ($v as $k2 => $v2) {
+										if (is_string($v2)) {
+											$json[$key][$k][$k2] = utf8_encode($v2);
+										}
+									}
+								}
+							}
+						}
+					}
+				}*/
+				$this->response->addHeader('Access-Control-Allow-Origin: *');
+				$this->response->addHeader('Access-Control-Allow-Methods: GET, PUT, POST, DELETE, OPTIONS');
+				$this->response->addHeader('Access-Control-Max-Age: 1000');
+				$this->response->addHeader('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/api/cart.php">
+		<operation>
+			<search><![CDATA[
+				if (isset($this->request->post['quantity'])) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->request->post['oquantity'])) {
+					$quantity = array_filter($this->request->post['oquantity']);
+				} elseif (isset($this->request->post['quantity'])) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (isset($this->request->post['option'])) {
+			]]></search>
+			<add position="replace" trim="true" offset="4"><![CDATA[
+				if (!isset($this->request->post['oquantity'])) {
+					if (isset($this->request->post['option'])) {
+						$option = array_filter($this->request->post['option']);
+					} else {
+						$option = array();	
+					}
+				}	
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (!isset($json['error']['option'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				unset($json['error']['option']);
+				if (!isset($this->request->post['oquantity'])) {
+					$product_options2 = $this->model_catalog_product->getProductOptions($this->request->post['product_id']);
+					foreach ($product_options2 as $product_option) {
+						if ($product_option['required'] && empty($option[$product_option['product_option_id']])) {
+							$json['error']['option'][$product_option['product_option_id']] = sprintf($this->language->get('error_required'), $product_option['name']);
+						}
+					}
+				} else {
+					$has_quantity = false;
+					$product_options = $this->model_catalog_product->getProductOptions($this->request->post['product_id']);
+					foreach ($product_options as $product_option) {
+						if ($product_option['type'] == 'multiple') {
+							foreach ($product_option['product_option_value'] as $product_option_value) {
+								if (isset($quantity[$product_option['product_option_id']][$product_option_value['product_option_value_id']]) && $quantity[$product_option['product_option_id']][$product_option_value['product_option_value_id']] != 0) {
+									$has_quantity = true;
+								}
+							}
+							if (!$has_quantity && $product_option['required']) {
+								$json['error']['option'][$product_option['product_option_id']] = sprintf($this->language->get('error_required'), $product_option['name']);
+							}
+						}
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				unset($this->session->data['shipping_method']);
+			]]></search>
+			<add position="before"><![CDATA[
+				if (!isset($this->session->data['oe']['shipping_code'])) {
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				unset($this->session->data['payment_methods']);
+			]]></search>
+			<add position="after"><![CDATA[
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (!isset($json['error']['option'])) {
+			]]></search>
+			<add position="after"><![CDATA[
+				unset($this->session->data['oe']['shipping_code']);
+				unset($this->session->data['oe']['payment_code']);
+				$json['shipping_code'] = '';
+				$json['payment_code'] = '';
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				foreach ($this->request->post['product'] as $product) {
+			]]></search>
+			<add position="before"><![CDATA[
+				$new_product_id = 500000;
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->cart->add($product['product_id'], $product['quantity'], $option);
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($product['product_id'] < 1) {
+					$product['product_id'] = $new_product_id;
+					$new_product_id++;
+				}
+				$key = $this->cart->add($product['product_id'], $product['quantity'], $option);
+				$this->session->data['oe']['oe_product'][$key]['original_qty'] = $product['quantity'];
+				if (isset($product['notax']) && $product['notax']) {
+					$this->session->data['oe']['oe_product'][$key]['notax'] = 1;
+				}
+				if (isset($product['price'])) {
+					$this->session->data['oe']['oe_product'][$key]['price'] = $product['price'];
+				}
+				if (isset($product['image']) && $product['image']) {
+					$this->session->data['oe']['oe_product'][$key]['image'] = $product['image'];
+				}
+				if (isset($product['sort_order'])) {
+					$this->session->data['oe']['oe_product'][$key]['sort_order'] = $product['sort_order'];
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->cart->add($this->request->post['product_id'], $quantity, $option);
+			]]></search>
+			<add position="after"><![CDATA[
+				if (isset($this->request->post['custom_price'])) {
+					$this->session->data['oe']['oe_product'][$key]['price'] = $this->currency->convert($this->request->post['price'], $this->session->data['currency'], $this->config->get('config_currency'));
+				}
+				if (isset($this->request->post['notax']) && $this->request->post['notax']) {
+					$this->session->data['oe']['oe_product'][$key]['notax'] = 1;
+				}
+				if (isset($this->request->post['image']) && $this->request->post['image']) {
+					$this->session->data['oe']['oe_product'][$key]['image'] = $this->request->post['image'];
+				}
+				if (isset($this->request->post['sort_order'])) {
+					$this->session->data['oe']['oe_product'][$key]['sort_order'] = $this->request->post['sort_order'];
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->cart->add($this->request->post['product_id'], $quantity, $option);
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->request->post['oquantity']) && $this->config->get('options_with_quantities' . base64_decode('X2xpY2Vuc2VfbGljZW5zZV9rZXk='))) {
+					$product_options = $this->model_catalog_product->getProductOptions($this->request->post['product_id']);
+					foreach ($product_options as $product_option) {
+						if ($product_option['type'] == 'multiple') {
+							foreach ($product_option['product_option_value'] as $product_option_value) {
+								if (isset($quantity[$product_option['product_option_id']][$product_option_value['product_option_value_id']]) && $quantity[$product_option['product_option_id']][$product_option_value['product_option_value_id']] != 0) {
+									if (isset($this->request->post['option'])) {
+										$option = array_filter($this->request->post['option']);
+									}
+									$product_options1 = $this->model_catalog_product->getProductOptions($this->request->post['product_id']);
+									foreach ($product_options1 as $product_option1) {
+										if ($product_option1['required'] && $product_option1['type'] != 'multiple' && empty($option[$product_option1['product_option_id']])) {
+											$json['error']['option'][$product_option1['product_option_id']] = sprintf($this->language->get('error_required'), $product_option1['name']);
+										}
+									}
+									if (!isset($json['error']['option'])) {
+										$option[$product_option['product_option_id']] = $product_option_value['product_option_value_id'];
+										$key = $this->cart->add($this->request->post['product_id'], $quantity[$product_option['product_option_id']][$product_option_value['product_option_value_id']], $option);
+									}
+								}
+								$option = array();
+							}
+						}
+					}
+				} else {
+					$key = $this->cart->add($this->request->post['product_id'], $quantity, $option);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->cart->update($this->request->post['key'], $this->request->post['quantity']);
+			]]></search>
+			<add position="before"><![CDATA[
+				$this->load->model('catalog/product');
+				$product_info = $this->model_catalog_product->getProduct($this->request->post['product_id']);
+				if ($product_info) {
+					if ($product_info['price'] != $this->request->post['price']) {
+						$this->session->data['oe']['oe_product'][$this->request->post['key']]['price'] = $this->currency->convert($this->request->post['price'], $this->session->data['currency'], $this->config->get('config_currency'));
+					} else {
+						unset($this->session->data['oe']['oe_product'][$this->request->post['key']]['price']);
+					}
+					if (isset($this->request->post['notax']) && $this->request->post['notax'] == 1) {
+						$this->session->data['oe']['oe_product'][$this->request->post['key']]['notax'] = 1;
+					} else {
+						unset($this->session->data['oe']['oe_product'][$this->request->post['key']]['notax']);
+					}
+					if (isset($this->request->post['image']) && $this->request->post['image'] && $this->request->post['image'] != $product_info['image']) {
+						$this->session->data['oe']['oe_product'][$this->request->post['key']]['image'] = $this->request->post['image'];
+					} else {
+						unset($this->session->data['oe']['oe_product'][$this->request->post['key']]['image']);
+					}
+					if (isset($this->request->post['sort_order'])) {
+						$this->session->data['oe']['oe_product'][$this->request->post['key']]['sort_order'] = $this->request->post['sort_order'];
+					} else {
+						unset($this->session->data['oe']['oe_product'][$this->request->post['key']]['sort_order']);
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$products = $this->cart->getProducts();
+			]]></search>
+			<add position="after"><![CDATA[
+				$this->load->model('tool/image');
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$json['products'][] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($product['image']) {
+					$image = $product['image'];
+					$thumb = $this->model_tool_image->resize($image, 100, 100);
+				} else {
+					$image = '';
+					$thumb = $this->model_tool_image->resize('no_image.png', 100, 100);
+				}
+				if ($this->request->server['HTTPS']) {
+					if (strpos($thumb, 'http') === false) {
+						$thumb = HTTPS_SERVER . $thumb;
+					} else {
+						$thumb = str_replace('http:', 'https:', $thumb);
+					}
+				}
+				if ($product['notax']) {
+					$price_t = $this->currency->format($product['price'], $this->session->data['currency']);
+					$total_t = $this->currency->format($product['price'] * $product['quantity'], $this->session->data['currency']);
+				} else {
+					$price_t = $this->currency->format($this->tax->calculate($product['price'], $product['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
+					$total_t = $this->currency->format($this->tax->calculate($product['price'], $product['tax_class_id'], $this->config->get('config_tax')) * $product['quantity'], $this->session->data['currency']);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$json['products'][] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				$cost_query = $this->db->query("SELECT `cost` FROM `" . DB_PREFIX . "oe_product_cost` WHERE `product_id` = '" . (int)$product['product_id'] . "'");
+				if ($cost_query->num_rows) {
+					$cost = $this->currency->format($cost_query->row['cost'], $this->session->data['currency']);
+				} else {
+					$cost = $this->currency->format(0, $this->session->data['currency']);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->currency->format($this->tax->calculate($product['price'], $product['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']),
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+							=> $this->currency->format($product['price'], $this->session->data['currency'], false, false),
+				'price_t'	=> $price_t,
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->currency->format($this->tax->calculate($product['price'], $product['tax_class_id'], $this->config->get('config_tax')) * $product['quantity'], $this->session->data['currency']),
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+									=> $this->currency->format($product['price'] * $product['quantity'], $this->session->data['currency']),
+				'total_t'			=> $total_t,
+				'notax'				=> $product['notax'],
+				'cost'				=> $cost,
+				'custom_product'	=> (isset($product['custom_product']) ? $product['custom_product'] : 0),
+				'image'				=> $image,
+				'thumb'				=> $thumb,
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				foreach ($totals as $total) {
+			]]></search>
+			<add position="before"><![CDATA[
+				$json['balance'] = 0;
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				foreach ($totals as $total) {
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($total['code'] == 'total' && !$json['balance']) {
+					$json['balance'] = $total['value'];
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (!$this->cart->hasStock() && (!$this->config->get('config_stock_checkout') || $this->config->get('config_stock_warning'))) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (!$this->config->get('module_order_entry_allow_zero_qty') && (!$this->cart->hasStock() && (!$this->config->get('config_stock_checkout') || $this->config->get('config_stock_warning')))) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $product['quantity'],
+			]]></search>
+			<add position="after"><![CDATA[
+				'sort_order'	=> $product['sort_order'],
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $product['reward']
+			]]></search>
+			<add position="after" offset="1"><![CDATA[
+				$sort_order = array();
+				foreach ($json['products'] as $key => $value) {
+					$sort_order[$key] = $value['sort_order'];
+				}
+				array_multisort($sort_order, SORT_ASC, $json['products']);
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/api/coupon.php">
+		<operation>
+			<search><![CDATA[
+				$json['success'] = $this->language->get('text_success');
+			]]></search>
+			<add position="after"><![CDATA[
+				} elseif (trim($this->request->post['coupon']) == '') {
+					$json['success'] = $this->language->get('text_coupon_cleared');
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/api/customer.php">
+		<operation>
+			<search><![CDATA[
+				if ((utf8_strlen($this->request->post['email']) > 96) || (!filter_var($this->request->post['email'], FILTER_VALIDATE_EMAIL))) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($this->config->get('module_order_entry_require_email') && ((utf8_strlen($this->request->post['email']) > 96) || (!filter_var($this->request->post['email'], FILTER_VALIDATE_EMAIL)))) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if ((utf8_strlen(trim($this->request->post['lastname'])) < 1) || (utf8_strlen(trim($this->request->post['lastname'])) > 32)) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($this->config->get('module_order_entry_require_lastname') && ((utf8_strlen(trim($this->request->post['lastname'])) < 1) || (utf8_strlen(trim($this->request->post['lastname'])) > 32))) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if ((utf8_strlen($this->request->post['telephone']) < 3) || (utf8_strlen($this->request->post['telephone']) > 32)) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($this->config->get('module_order_entry_require_telephone') && ((utf8_strlen($this->request->post['telephone']) < 3) || (utf8_strlen($this->request->post['telephone']) > 32))) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->session->data['customer'] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				$this->session->data['oe']['order_entry'] = 1;
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->request->post['firstname'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> str_replace('&amp;', '&', $this->request->post['firstname']),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->request->post['lastname'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> str_replace('&amp;', '&', $this->request->post['lastname']),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (is_array($this->config->get('config_customer_group_display')) && in_array($this->request->post['customer_group_id'], $this->config->get('config_customer_group_display'))) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->session->data['oe'])) {
+					$customer_group_id = $this->request->post['customer_group_id'];
+				} else {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$customer_group_id = $this->config->get('config_customer_group_id');
+			]]></search>
+			<add position="after"><![CDATA[
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/api/order.php">
+		<operation>
+			<search><![CDATA[
+				$order_data['store_url'] = $this->config->get('config_url');
+			]]></search>
+			<add position="after"><![CDATA[
+				if (isset($this->request->post['store']) && $this->request->post['store']) {
+					$this->load->model('setting/store');
+					$store_info = $this->model_setting_store->getStore2($this->request->post['store']);
+					if ($store_info) {
+						$order_data['store_id'] = $this->request->post['store'];
+						$order_data['store_name'] = $store_info['name'];
+						$order_data['store_url'] = $store_info['url'];
+					}
+				}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				if ((!$this->cart->hasProducts() && empty($this->session->data['vouchers'])) || (!$this->cart->hasStock() && !$this->config->get('config_stock_checkout'))) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (!$this->config->get('module_order_entry_allow_zero_qty') && ((!$this->cart->hasProducts() && empty($this->session->data['vouchers'])) || (!$this->cart->hasStock() && !$this->config->get('config_stock_checkout')))) {
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				if (((!$this->cart->hasProducts() && empty($this->session->data['vouchers'])) || (!$this->cart->hasStock() && !$this->config->get('config_stock_checkout'))) && !$this->config->get('stocksetting3_allowbackendorder')) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (!$this->config->get('module_order_entry_allow_zero_qty') && ((!$this->cart->hasProducts() && empty($this->session->data['vouchers'])) || (!$this->cart->hasStock() && !$this->config->get('config_stock_checkout'))) && !$this->config->get('stocksetting3_allowbackendorder')) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$order_data['comment'] = '';
+			]]></search>
+			<add position="after" offset="1"><![CDATA[
+				$order_data['ref_no'] = $this->request->post['ref_no'];
+				$order_data['no_tax'] = (isset($this->request->post['no_tax']) ? 1 : 0);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				public function history() {
+			]]></search>
+			<add position="before"><![CDATA[
+				public function clearsession() {
+					unset($this->session->data['oe']);
+					unset($this->session->data['order_id']);
+					$this->clearcart();
+				}
+				public function clearcart() {
+					$json = "";
+					$this->cart->clear();
+					$this->response->addHeader('Content-Type: application/json');
+					$this->response->setOutput(json_encode($json));
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->model_checkout_order->addOrderHistory
+			]]></search>
+			<add position="after"><![CDATA[
+				$this->cart->clear();
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->tax->getTax($product['price'], $product['tax_class_id']),
+			]]></search>
+			<add position="after"><![CDATA[
+				'notax'			=> $product['notax'],
+				'image'			=> $product['image'],
+				'sort_order'	=> $product['sort_order'],
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$json['order_id'] = $this->model_checkout_order->addOrder($order_data);
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->request->post['save_customer']) && $this->request->post['save_customer']) {
+					$this->load->model('account/customer');
+					$this->load->model('account/address');
+					$length = 8;
+					$password = "";
+					$pw_chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ123456789!";
+					$maxlength = strlen($pw_chars);
+					if ($length > $maxlength) {
+						$length = $maxlength;
+					}
+					$i = 0;
+					while ($i < $length) {
+						$char = substr($pw_chars, mt_rand(0, $maxlength-1), 1);
+						if (!strstr($password, $char)) { 
+							$password .= $char;
+							$i++;
+						}
+					}
+					if (isset($this->session->data['shipping_address']['company'])) {
+						$company = $this->session->data['shipping_address']['company'];
+						$address_1 = $this->session->data['shipping_address']['address_1'];
+						$address_2 = $this->session->data['shipping_address']['address_2'];
+						$city = $this->session->data['shipping_address']['city'];
+						$postcode = $this->session->data['shipping_address']['postcode'];
+						$country_id = $this->session->data['shipping_address']['country_id'];
+						$zone_id = $this->session->data['shipping_address']['zone_id'];
+					} elseif (isset($this->session->data['payment_address']['company'])) {
+						$company = $this->session->data['payment_address']['company'];
+						$address_1 = $this->session->data['payment_address']['address_1'];
+						$address_2 = $this->session->data['payment_address']['address_2'];
+						$city = $this->session->data['payment_address']['city'];
+						$postcode = $this->session->data['payment_address']['postcode'];
+						$country_id = $this->session->data['payment_address']['country_id'];
+						$zone_id = $this->session->data['payment_address']['zone_id'];
+					} else {
+						$company = '';
+						$address_1 = '';
+						$address_2 = '';
+						$city = '';
+						$postcode = '';
+						$country_id = 0;
+						$zone_id = 0;
+					}
+					$customer_data = array(
+						'customer_group_id'		=> $this->session->data['customer']['customer_group_id'],
+						'firstname'				=> $this->session->data['customer']['firstname'],
+						'lastname'				=> $this->session->data['customer']['lastname'],
+						'email'					=> $this->session->data['customer']['email'],
+						'telephone'				=> $this->session->data['customer']['telephone'],
+						'password'				=> $password,
+						'company'				=> $company,
+						'address_1'				=> $address_1,
+						'address_2'				=> $address_2,
+						'city'					=> $city,
+						'postcode'				=> $postcode,
+						'country_id'			=> $country_id,
+						'zone_id'				=> $zone_id,
+						'order_entry'			=> 1,
+						'store_id'				=> (isset($this->request->post['store']) ? $this->request->post['store'] : (isset($this->request->post['store_id']) ? $this->request->post['store_id'] : 0)),
+						'notify_customer'		=> (isset($this->request->post['notify_customer']) ? $this->request->post['notify_customer'] : 0),
+						'default'				=> 1
+					);
+					$order_data['customer_id'] = $this->model_account_customer->addCustomer($customer_data);
+					$this->model_account_address->addAddress($order_data['customer_id'], $customer_data);
+					$this->session->data['customer']['customer_id'] = $order_data['customer_id'];
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->model_checkout_order->addOrderHistory($json['order_id'], $order_status_id);
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->request->post['notify_customer_order']) && $this->request->post['notify_customer_order']) {
+					$notify_customer_order = 1;
+				} else {
+					$notify_customer_order = 0;
+				}
+				$this->model_checkout_order->addOrderHistory($json['order_id'], $order_status_id, $this->request->post['comment'], $notify_customer_order);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->model_checkout_order->addOrderHistory($order_id, $order_status_id);
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->request->post['notify_customer_order']) && $this->request->post['notify_customer_order']) {
+					$notify_customer_order = 1;
+				} else {
+					$notify_customer_order = 0;
+				}
+				$this->model_checkout_order->addOrderHistory($order_id, $order_status_id, $this->request->post['comment'], $notify_customer_order);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$order_data['language_id'] = $this->config->get('config_language_id');
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				$order_data['language_id'] = (isset($this->request->post['language']) ? (int)$this->request->post['language'] : (int)$this->config->get('config_language_id'));
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				$this->model_checkout_order->editOrder($order_id, $order_data);
+			]]></search>
+			<add position="before"><![CDATA[
+				$order_data['language_id'] = (isset($this->request->post['language']) ? (int)$this->request->post['language'] : (int)$this->config->get('config_language_id'));
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/api/payment.php">
+		<operation>
+			<search><![CDATA[
+				if ((utf8_strlen(trim($this->request->post['lastname'])) < 1) || (utf8_strlen(trim($this->request->post['lastname'])) > 32)) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($this->config->get('module_order_entry_require_lastname') && ((utf8_strlen(trim($this->request->post['lastname'])) < 1) || (utf8_strlen(trim($this->request->post['lastname'])) > 32))) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if ((utf8_strlen($this->request->post['city']) < 2) || (utf8_strlen($this->request->post['city']) > 32)) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($this->config->get('module_order_entry_require_city') && ((utf8_strlen($this->request->post['city']) < 2) || (utf8_strlen($this->request->post['city']) > 32))) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (!isset($this->request->post['zone_id']) || $this->request->post['zone_id'] == '') {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($this->config->get('module_order_entry_require_zone') && (!isset($this->request->post['zone_id']) || $this->request->post['zone_id'] == '')) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if ($json['payment_methods']) {
+			]]></search>
+			<add position="after"><![CDATA[
+				foreach ($json['payment_methods'] as $key => $payment_method) {
+					if (strpos($payment_method['title'], '<img') !== false) {
+						$pos1 = strpos($payment_method['title'], 'title=');
+						$pos2 = strpos($payment_method['title'], 'height=');
+						$title = substr($payment_method['title'], $pos1 + 7, $pos2 - $pos1 - 9);
+						$json['payment_methods'][$key]['title'] = $title;
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->request->post['firstname'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> str_replace('&amp;', '&', $this->request->post['firstname']),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->request->post['lastname'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> str_replace('&amp;', '&', $this->request->post['lastname']),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->request->post['company'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> str_replace('&amp;', '&', $this->request->post['company']),
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/api/reward.php">
+		<operation>
+			<search><![CDATA[
+				$points = $this->customer->getRewardPoints();
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->session->data['oe']['order_entry']) && isset($this->request->post['reward'])) {
+					$points = $this->request->post['reward'] + $this->customer->getRewardPoints();
+				} else {
+					$points = $this->customer->getRewardPoints();
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (empty($this->request->post['reward'])) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($this->request->post['reward'] < 0) {
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/api/shipping.php">
+		<operation>
+			<search index="0"><![CDATA[
+				if ($this->cart->hasShipping()) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (!$this->cart->hasShipping()) {
+					$this->load->model('localisation/country');
+					$country_info = $this->model_localisation_country->getCountry($this->request->post['country_id']);
+					if ($country_info) {
+						$country = $country_info['name'];
+						$iso_code_2 = $country_info['iso_code_2'];
+						$iso_code_3 = $country_info['iso_code_3'];
+						$address_format = $country_info['address_format'];
+					} else {
+						$country = '';
+						$iso_code_2 = '';
+						$iso_code_3 = '';
+						$address_format = '';
+					}
+					$this->load->model('localisation/zone');
+					$zone_info = $this->model_localisation_zone->getZone($this->request->post['zone_id']);
+					if ($zone_info) {
+						$zone = $zone_info['name'];
+						$zone_code = $zone_info['code'];
+					} else {
+						$zone = '';
+						$zone_code = '';
+					}
+					$this->session->data['shipping_address'] = array(
+						'firstname'      => $this->request->post['firstname'],
+						'lastname'       => $this->request->post['lastname'],
+						'company'        => $this->request->post['company'],
+						'address_1'      => $this->request->post['address_1'],
+						'address_2'      => $this->request->post['address_2'],
+						'postcode'       => $this->request->post['postcode'],
+						'city'           => $this->request->post['city'],
+						'zone_id'        => $this->request->post['zone_id'],
+						'zone'           => $zone,
+						'zone_code'      => $zone_code,
+						'country_id'     => $this->request->post['country_id'],
+						'country'        => $country,
+						'iso_code_2'     => $iso_code_2,
+						'iso_code_3'     => $iso_code_3,
+						'address_format' => $address_format,
+						'custom_field'   => isset($this->request->post['custom_field']) ? $this->request->post['custom_field'] : array()
+					);
+					$json['success'] = $this->language->get('text_address');
+					unset($this->session->data['shipping_method']);
+					unset($this->session->data['shipping_methods']);
+				} else {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if ((utf8_strlen(trim($this->request->post['lastname'])) < 1) || (utf8_strlen(trim($this->request->post['lastname'])) > 32)) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($this->config->get('module_order_entry_require_lastname') && ((utf8_strlen(trim($this->request->post['lastname'])) < 1) || (utf8_strlen(trim($this->request->post['lastname'])) > 32))) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if ((utf8_strlen($this->request->post['city']) < 2) || (utf8_strlen($this->request->post['city']) > 32)) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($this->config->get('module_order_entry_require_city') && ((utf8_strlen($this->request->post['city']) < 2) || (utf8_strlen($this->request->post['city']) > 32))) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (!isset($this->request->post['zone_id']) || $this->request->post['zone_id'] == '') {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($this->config->get('module_order_entry_require_zone') && (!isset($this->request->post['zone_id']) || $this->request->post['zone_id'] == '')) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->request->post['firstname'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> str_replace('&amp;', '&', $this->request->post['firstname']),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->request->post['lastname'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> str_replace('&amp;', '&', $this->request->post['lastname']),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $this->request->post['company'],
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				=> str_replace('&amp;', '&', $this->request->post['company']),
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/checkout/confirm.php">
+		<operation>
+			<search><![CDATA[
+				=> $product['product_id'],
+			]]></search>
+			<add position="after"><![CDATA[
+				'notax'				=> $product['notax'],
+				'image'				=> $product['image'],
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/checkout/shipping_method.php">
+		<operation>
+			<search><![CDATA[
+				$this->load->model('extension/shipping/' . $result['code']);
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($result['code'] != 'oe_custom_shipping' || $this->config->get('shipping_oe_custom_shipping_catalog_method')) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$method_data[$result['code']] = array(
+			]]></search>
+			<add position="after" offset="5"><![CDATA[
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/extension/payment/pp_express.php">
+		<operation>
+			<search><![CDATA[
+				$this->load->model('extension/shipping/' . $result['code']);
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($result['code'] != 'oe_custom_shipping' || $this->config->get('shipping_oe_custom_shipping_catalog_method')) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$quote_data[$result['code']] = array(
+			]]></search>
+			<add position="after" offset="5"><![CDATA[
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/extension/total/*.php">
+		<operation error="skip">
+			<search><![CDATA[
+				$this->load->model('extension/shipping/' . $result['code']);
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($result['code'] != 'oe_custom_shipping' || $this->config->get('shipping_oe_custom_shipping_catalog_method')) {
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				$quote_data[$result['code']] = array(
+			]]></search>
+			<add position="after" offset="5"><![CDATA[
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/mail/register.php">
+		<operation>
+			<search><![CDATA[
+				$data['text_login'] = $this->language->get('text_login');
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->session->data['oe'])) {
+					$data['text_username'] = sprintf($this->language->get('text_email_address'), $args[0]['email']);
+					$data['text_password'] = sprintf($this->language->get('text_password'), $args[0]['password']);
+				} else {
+					$data['text_username'] = '';
+					$data['text_password'] = '';
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$mail->send();
+			]]></search>
+			<add position="replace"><![CDATA[
+				if (!isset($this->session->data['oe']) || $args[0]['notify_customer'] == 1) {
+					$mail->send();
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/startup/session.php">
+		<operation>
+			<search><![CDATA[
+				if (isset($this->request->get['route']) && substr($this->request->get['route'], 0, 4) == 'api/') {
+			]]></search>
+			<add position="replace"><![CDATA[
+				if (isset($this->request->get['route']) && (substr($this->request->get['route'], 0, 4) == 'api/' || substr($this->request->get['route'], 0, 14) == 'extension/api/')) {
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/language/en-gb/api/coupon.php">
+		<operation>
+			<search><![CDATA[
+				// Text
+			]]></search>
+			<add position="after"><![CDATA[
+				$_['text_coupon_cleared']		= 'The coupon has been removed from this order!';
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/language/en-gb/api/customer.php">
+		<operation>
+			<search><![CDATA[
+				// Text
+			]]></search>
+			<add position="after"><![CDATA[
+				$_['text_email_address']	= 'Username';
+				$_['text_password']			= 'Password';
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/language/en-gb/api/payment.php">
+		<operation error="skip">
+			<search><![CDATA[
+				'Warning: Payment address required!'
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				'Warning: Payment address required!  If you have selected an address, some required information may be missing.  Click the pencil icon for the payment address and make sure all required fields are filled in!'
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/language/en-gb/api/reward.php">
+		<operation>
+			<search><![CDATA[
+				// Text
+			]]></search>
+			<add position="after"><![CDATA[
+				$_['text_remove_reward']		= 'The reward points have been removed from this order!';
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/language/en-gb/api/shipping.php">
+		<operation>
+			<search><![CDATA[
+				'Warning: Shipping address required!'
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				'Warning: Shipping address required!  If you have selected an address, some required information may be missing.  Click the pencil icon for the shipping address and make sure all required fields are filled in!'
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/language/en-gb/mail/register.php">
+		<operation>
+			<search><![CDATA[
+				// Text
+			]]></search>
+			<add position="after"><![CDATA[
+				$_['text_email_address']	= 'Email Address: %s';
+				$_['text_password']			= 'Your username is your email address and a password has been generated for you.  Please change this password upon initial login.  The generated password is %s';
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/catalog/product.php">
+		<operation>
+			<search><![CDATA[
+				$query = $this->db->query("SELECT DISTINCT *, 
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->session->data['oe']['order_entry'])) {
+					$sql = "SELECT DISTINCT *, pd.name AS name, p.image, m.name AS manufacturer, (SELECT price FROM " . DB_PREFIX . "product_discount pd2 WHERE pd2.product_id = p.product_id AND pd2.customer_group_id = '" . (int)$this->config->get('config_customer_group_id') . "' AND pd2.quantity = '1' AND ((pd2.date_start = '0000-00-00' OR pd2.date_start < NOW()) AND (pd2.date_end = '0000-00-00' OR pd2.date_end > NOW())) ORDER BY pd2.priority ASC, pd2.price ASC LIMIT 1) AS discount, (SELECT price FROM " . DB_PREFIX . "product_special ps WHERE ps.product_id = p.product_id AND ps.customer_group_id = '" . (int)$this->config->get('config_customer_group_id') . "' AND ((ps.date_start = '0000-00-00' OR ps.date_start < NOW()) AND (ps.date_end = '0000-00-00' OR ps.date_end > NOW())) ORDER BY ps.priority ASC, ps.price ASC LIMIT 1) AS special, (SELECT points FROM " . DB_PREFIX . "product_reward pr WHERE pr.product_id = p.product_id AND customer_group_id = '" . (int)$this->config->get('config_customer_group_id') . "') AS reward, (SELECT ss.name FROM " . DB_PREFIX . "stock_status ss WHERE ss.stock_status_id = p.stock_status_id AND ss.language_id = '" . (int)$this->config->get('config_language_id') . "') AS stock_status, (SELECT wcd.unit FROM " . DB_PREFIX . "weight_class_description wcd WHERE p.weight_class_id = wcd.weight_class_id AND wcd.language_id = '" . (int)$this->config->get('config_language_id') . "') AS weight_class, (SELECT lcd.unit FROM " . DB_PREFIX . "length_class_description lcd WHERE p.length_class_id = lcd.length_class_id AND lcd.language_id = '" . (int)$this->config->get('config_language_id') . "') AS length_class, (SELECT AVG(rating) AS total FROM " . DB_PREFIX . "review r1 WHERE r1.product_id = p.product_id AND r1.status = '1' GROUP BY r1.product_id) AS rating, (SELECT COUNT(*) AS total FROM " . DB_PREFIX . "review r2 WHERE r2.product_id = p.product_id AND r2.status = '1' GROUP BY r2.product_id) AS reviews, p.sort_order FROM " . DB_PREFIX . "product p LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id) LEFT JOIN " . DB_PREFIX . "manufacturer m ON (p.manufacturer_id = m.manufacturer_id) WHERE p.product_id = '" . (int)$product_id . "' AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "' AND p.date_available <= NOW()";
+					if (!$this->config->get('module_order_entry_allow_disabled')) {
+						$sql .= " AND p.status = '1'";
+					}
+					$query = $this->db->query($sql);
+				} else {
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				if ($query->num_rows) {
+			]]></search>
+			<add position="before"><![CDATA[
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/mail/order.php">
+		<operation> <!--Order Confirmation Email//-->
+			<search index="0"><![CDATA[
+				$from = $this->model_setting_setting->getSettingValue('config_email', $order_info['store_id']);
+			]]></search>
+			<add position="before"><![CDATA[
+				if (!isset($this->session->data['oe']['order_entry']) || $notify) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$mail->setHtml($this->load->view('mail/order_add', $data));
+			]]></search>
+			<add position="after" offset="1"><![CDATA[
+				}
+			]]></add>
+		</operation>
+		<operation> <!--Admin Alert Email//-->
+			<search><![CDATA[
+				$data['comment'] = strip_tags($order_info['comment']);
+			]]></search>
+			<add position="after"><![CDATA[
+				if (!isset($this->session->data['oe']['order_entry']) || $notify) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			]]></search>
+			<add position="after" offset="4"><![CDATA[
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->load->model('tool/upload');
+			]]></search>
+			<add position="after"><![CDATA[
+				$this->load->model('tool/image');
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['products'][] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				$sort_order = '';
+				$image = '';
+				$oe_product_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_order_product` WHERE `order_id` = '" . (int)$order_info['order_id'] . "' AND `order_product_id` = '" . (int)$order_product['order_product_id'] . "'");
+				if ($oe_product_query->num_rows) {
+					$sort_order = (isset($oe_product_query->row['sort_order']) ? $oe_product_query->row['sort_order'] : '');
+					if ($oe_product_query->row['image']) {
+						$image = $this->model_tool_image->resize($oe_product_query->row['image'], 60, 60);
+					}
+				}
+				$sort_order = array();
+				foreach ($data['products'] as $key => $value) {
+					$sort_order[$key] = $value['sort_order'];
+				}
+				array_multisort($sort_order, SORT_ASC, $data['products']);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> $order_product['quantity'],
+			]]></search>
+			<add position="after"><![CDATA[
+				'sort_order'	=> $sort_order,
+				'image'			=> $image,
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['link'] = $order_info
+			]]></search>
+			<add position="after"><![CDATA[
+				$pplink_query = $this->db->query("SELECT `pp_link` FROM `" . DB_PREFIX . "oe_order` WHERE `order_id` = '" . (int)$order_info['order_id'] . "'");
+				if (isset($pplink_query->row['pp_link']) && $pplink_query->row['pp_link']) {
+					$data['pp_link'] = $this->url->link('checkout/pp_link', '&order_id=' . $order_info['order_id'], true);
+					$pp_button = $this->config->get('module_order_entry_paypal_link_button');
+					if ($pp_button) {
+						$this->load->model('tool/image');
+						$data['pp_button'] = $this->model_tool_image->resize($pp_button, $this->config->get('module_order_entry_paypal_link_button_width'), $this->config->get('module_order_entry_paypal_link_button_height'));
+					} else {
+						$data['pp_button'] = '';
+					}
+					$oe_paypal_text = $this->config->get('module_order_entry_paypal_text');
+					if (!empty($oe_paypal_text) && is_array($oe_paypal_text)) {
+						foreach ($oe_paypal_text as $language_id => $text) {
+							if ($language_id == $this->config->get('config_language_id')) {
+								$data['text_pp_link'] = $text;
+								break;
+							}
+						}
+					} else {
+						$data['text_pp_link'] = 'Pay Now with PayPal';
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/checkout/order.php">
+		<operation>
+			<search><![CDATA[
+				$this->addOrderHistory($order_id, 0);
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (!isset($this->session->data['oe'])) {
+					$this->addOrderHistory($order_id, 0);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->cache->delete('product');
+			]]></search>
+			<add position="after"><![CDATA[
+				if (isset($this->session->data['oe']['order_entry'])) {
+					$order_total_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "order_total` WHERE order_id = '" . (int)$order_id . "' ORDER BY sort_order ASC");
+					if (isset($this->session->data['reward'])) {
+						$this->load->model('total/reward');
+						$this->model_total_reward->unconfirm($order_id);
+						if ($this->session->data['reward'] > 0) {
+							foreach ($order_total_query->rows as $order_total) {
+								if ($order_total['code'] == 'reward') {
+									$this->model_total_reward->confirm($order_info, $order_total);
+								}
+							}
+						}
+					}
+					if (!isset($this->session->data['coupon'])) {
+						$this->db->query("DELETE FROM `" . DB_PREFIX . "coupon_history` WHERE `order_id` = '" . (int)$order_id . "'");
+					} else {
+						$coupon_history_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "coupon_history` WHERE `order_id` = '" . (int)$order_id . "'");
+						if ($coupon_history_query->num_rows < 1) {
+							$this->load->model('total/coupon');
+							foreach ($order_total_query->rows as $order_total) {
+								if ($order_total['code'] == 'coupon') {
+									$this->model_total_coupon->confirm($order_info, $order_total);
+								}
+							}
+						}
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$order_id = $this->db->getLastId();
+			]]></search>
+			<add position="after"><![CDATA[
+				$this->db->query("INSERT INTO `" . DB_PREFIX . "oe_order` SET `order_id` = '" . (int)$order_id . "', `ref_no` = '" . (isset($data['ref_no']) ? $this->db->escape($data['ref_no']) : '') . "', `no_tax` = '" . (isset($data['no_tax']) ? (int)$data['no_tax'] : '') . "', `pp_link` = '" . (isset($data['pp_link']) ? (int)$data['pp_link'] : '0') . "'");
+				$oe_order_id = $this->db->getLastId();
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->db->query("DELETE FROM " . DB_PREFIX . "order_product WHERE order_id = '" . (int)$order_id . "'");
+			]]></search>
+			<add position="after"><![CDATA[
+				$this->db->query("UPDATE `" . DB_PREFIX . "order` SET `language_id` = '" . (int)$data['language_id'] . "' WHERE `order_id` = '" . (int)$order_id . "'");
+				$this->db->query("UPDATE `" . DB_PREFIX . "oe_order` SET `ref_no` = '" . (isset($data['ref_no']) ? $this->db->escape($data['ref_no']) : '') . "', `no_tax` = '" . (isset($data['no_tax']) ? (int)$data['no_tax'] : '') . "', `pp_link` = '" . (isset($data['pp_link']) ? (int)$data['pp_link'] : '0') . "' WHERE `order_id` = '" . (int)$order_id . "'");
+				$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_order_product` WHERE `order_id` = '" . (int)$order_id . "'");
+				$oe_order_query = $this->db->query("SELECT `oe_order_id` FROM `" . DB_PREFIX . "oe_order` WHERE `order_id` = '" . (int)$order_id . "'");
+				if ($oe_order_query->num_rows) {
+					$oe_order_id = $oe_order_query->row['oe_order_id'];
+				} else {
+					$oe_order_id = 0;
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$order_product_id = $this->db->getLastId();
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($product['product_id'] < 1) {
+					$product['product_id'] = $new_product_id;
+					$new_product_id++;
+				}
+				$this->db->query("INSERT INTO `" . DB_PREFIX . "oe_order_product` SET `oe_order_id` = '" . (int)$oe_order_id . "', `order_product_id` = '" . (int)$order_product_id . "', `order_id` = '" . (int)$order_id . "', `product_id` = '" . (int)$product['product_id'] . "', `notax` = '" . (isset($product['notax']) ? (int)$product['notax'] : 0) . "', `image` = '" . (isset($product['image']) ? $this->db->escape($product['image']) : '') . "', `sort_order` = '" . (isset($product['sort_order']) ? (int)$product['sort_order'] : 0) . "'");
+				$oe_order_product_id = $this->db->getLastId();
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->db->query("DELETE FROM `" . DB_PREFIX . "order_product` WHERE order_id = '" . (int)$order_id . "'");
+			]]></search>
+			<add position="after"><![CDATA[
+				$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_order` WHERE `order_id` = '" . (int)$order_id . "'");
+				$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_order_product` WHERE `order_id` = '" . (int)$order_id . "'");
+				$this->db->query("DELETE FROM `" . DB_PREFIX . "coupon_history` WHERE `order_id` = '" . (int)$order_id . "'");
+				$this->db->query("DELETE FROM `" . DB_PREFIX . "customer_reward` WHERE `order_id` = '" . (int)$order_id . "'");
+			]]></add>
+		</operation>
+		<operation>
+			<search index="1"><![CDATA[
+				foreach ($data['products'] as $product) {
+			]]></search>
+			<add position="before"><![CDATA[
+				$new_product_id = 500000;
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/extension/payment/pp_standard.php">
+		<operation>
+			<search><![CDATA[
+				} elseif ($query->num_rows) {
+			]]></search>
+			<add position="after"><![CDATA[
+					$status = true;
+				} elseif (isset($this->session->data['oe'])) {
+					$status = true;
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/setting/store.php">
+		<operation>
+			<search><![CDATA[
+				public function getStores($data = array()) {
+			]]></search>
+			<add position="before"><![CDATA[
+				public function getStore2($store_id) {
+					$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "store` WHERE `store_id` = '" . (int)$store_id . "'");
+					return $query->row;
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/extension/total/coupon.php">
+		<operation>
+			<search><![CDATA[
+				if ($coupon_query->row['uses_total'] > 0 && ($coupon_total >= $coupon_query->row['uses_total'])) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (!isset($this->session->data['oe']['order_entry']) && $coupon_query->row['uses_total'] > 0 && ($coupon_total >= $coupon_query->row['uses_total'])) {
+					$status = false;
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if ($coupon_query->row['uses_customer'] > 0 && ($customer_total >= $coupon_query->row['uses_customer'])) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (!isset($this->session->data['oe']['order_entry']) && $coupon_query->row['uses_customer'] > 0 && ($customer_total >= $coupon_query->row['uses_customer'])) {
+					$status = false;
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/extension/total/credit.php">
+		<operation>
+			<search><![CDATA[
+				if ((float)$balance) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ((float)$balance || isset($this->session->data['oe']['store_credit'])) {
+					if (isset($this->session->data['oe']['store_credit'])) {
+						$credit = $this->session->data['oe']['store_credit'];
+					} else {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$credit = min($balance, $total['total']);
+			]]></search>
+			<add position="after"><![CDATA[
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/extension/total/reward.php">
+		<operation>
+			<search><![CDATA[
+				$points = $this->customer->getRewardPoints();
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->session->data['oe']['order_entry']) && isset($this->session->data['reward'])) {
+					$points = $this->session->data['reward'] + $this->customer->getRewardPoints();
+				} else {
+					$points = $this->customer->getRewardPoints();
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/extension/total/tax.php">
+		<operation>
+			<search><![CDATA[
+				foreach ($total['taxes'] as $key => $value) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if (!isset($this->session->data['oe']['no_tax'])) {
+			]]></add>
+		</operation>
+		<operation>
+			<search index="1"><![CDATA[
+				}
+			]]></search>
+			<add position="after"><![CDATA[
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/view/theme/*/template/mail/order_add.twig">
+		<operation>
+			<search><![CDATA[
+				<p style="margin-top: 0px; margin-bottom: 20px;">{{ text_greeting }}</p>
+			]]></search>
+			<add position="after"><![CDATA[
+				{% if text_pp_link %}
+					<p style="margin-top: 0px; margin-bottom: 20px;">{{ text_pp_link }}</p>
+					{% if pp_button %}
+						<p style="margin-top: 0px; margin-bottom: 20px;"><a href="{{ pp_link }}"><img src="{{ pp_button }}" border="0" /></a></p>
+					{% else %}
+						<p style="margin-top: 0px; margin-bottom: 20px;"><a href="{{ pp_link }}">{{ pp_link }}</a></p>
+					{% endif %}
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<td style="font-size: 12px; border-right: 1px solid #DDDDDD; border-bottom: 1px solid #DDDDDD; background-color: #EFEFEF; font-weight: bold; text-align: left; padding: 7px; color: #222222;">{{ text_product }}</td>
+			]]></search>
+			<add position="before"><![CDATA[
+				<td style="font-size: 12px; border-right: 1px solid #DDDDDD; border-bottom: 1px solid #DDDDDD; background-color: #EFEFEF; font-weight: bold; text-align: center; padding: 7px; color: #222222;"></td>
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<td style="font-size: 12px; border-right: 1px solid #DDDDDD; border-bottom: 1px solid #DDDDDD; text-align: left; padding: 7px;">{{ product.name }}
+			]]></search>
+			<add position="before"><![CDATA[
+				<td style="font-size: 12px;	border-right: 1px solid #DDDDDD; border-bottom: 1px solid #DDDDDD; text-align: center; padding: 7px;"><img src="{{ product.image }}" border="0" /></td>
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<td style="font-size: 12px;	border-right: 1px solid #DDDDDD; border-bottom: 1px solid #DDDDDD; text-align: left; padding: 7px;">{{ voucher.description }}</td>
+			]]></search>
+			<add position="before"><![CDATA[
+				<td style="font-size: 12px;	border-right: 1px solid #DDDDDD; border-bottom: 1px solid #DDDDDD; text-align: left; padding: 7px;"></td>
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<td style="font-size: 12px;	border-right: 1px solid #DDDDDD; border-bottom: 1px solid #DDDDDD; text-align: right; padding: 7px;" colspan="4"><b>{{ total.title }}:</b></td>
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				<td style="font-size: 12px;	border-right: 1px solid #DDDDDD; border-bottom: 1px solid #DDDDDD; text-align: right; padding: 7px;" colspan="5"><b>{{ total.title }}:</b></td>
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/view/theme/*/template/mail/register.twig">
+		<operation>
+			<search><![CDATA[
+				{{ login }}
+			]]></search>
+			<add position="after" trim="true"><![CDATA[
+{% if text_username %}
+
+{{ text_username }}
+
+{{ text_password }}
+
+{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="system/library/cart/cart.php">
+		<operation>
+			<search index="0"><![CDATA[
+				$product_query = $this->db->query("SELECT * FROM " . DB_PREFIX . "product_to_store
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->session->data['oe']['order_entry'])) {
+					$sql = "SELECT * FROM " . DB_PREFIX . "product p LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id) WHERE p.product_id = '" . (int)$cart['product_id'] . "' AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "' AND p.date_available <= NOW()";
+					if (!$this->config->get('module_order_entry_allow_disabled')) {
+						$sql .= " AND p.status = '1'";
+					}
+					$product_query = $this->db->query($sql);
+				} else {
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				if ($product_query->num_rows && ($cart['quantity'] > 0)) {
+			]]></search>
+			<add position="before"><![CDATA[
+				}
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				if (!$product_query->row['quantity'] || ($product_query->row['quantity'] < $cart['quantity'])) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->session->data['oe']['oe_product'][$cart['cart_id']]['original_qty'])) {
+					$product_qty = $product_query->row['quantity'] + $this->session->data['oe']['oe_product'][$cart['cart_id']]['original_qty'];
+					if ($product_qty < $cart['quantity']) {
+						$stock = false;
+					}
+				} elseif (!$product_query->row['quantity'] || ($product_query->row['quantity'] < $cart['quantity'])) {
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				} elseif (!$product_query->row['quantity'] || ($product_query->row['quantity'] < $cart['quantity']) || !$product_query->row['ignore_quantity']) {
+			]]></search>
+			<add position="before"><![CDATA[
+				} elseif (isset($this->session->data['oe']['oe_product'][$cart['cart_id']]['original_qty'])) {
+					$product_qty = $product_query->row['quantity'] + $this->session->data['oe']['oe_product'][$cart['cart_id']]['original_qty'];
+					if ($product_qty < $cart['quantity']) {
+						$stock = false;
+					}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				=> $product_query->row['product_id'],
+			]]></search>
+			<add position="before" offset="2"><![CDATA[
+				if (isset($this->session->data['oe']['oe_product'][$cart['cart_id']]['price'])) {
+					$price = $this->session->data['oe']['oe_product'][$cart['cart_id']]['price'];
+					$option_price = 0;
+				}
+				if (isset($this->session->data['oe']['oe_product'][$cart['cart_id']]['notax'])) {
+					$notax = 1;
+				} else {
+					$notax = 0;
+				}
+				if (isset($this->session->data['oe']['oe_product'][$cart['cart_id']]['image'])) {
+					$product_query->row['image'] = $this->session->data['oe']['oe_product'][$cart['cart_id']]['image'];
+				}
+				if (isset($this->session->data['oe']['oe_product'][$cart['cart_id']]['sort_order'])) {
+					$sort_order = $this->session->data['oe']['oe_product'][$cart['cart_id']]['sort_order'];
+				} else {
+					$sort_order = '';
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				=> $product_query->row['product_id'],
+			]]></search>
+			<add position="after"><![CDATA[
+				'notax'			=> $notax,
+				'sort_order'	=> $sort_order,
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "cart WHERE api_id = '" . (isset($this->session->data['api_id']) ? (int)$this->session->data['api_id'] : 0) . "' AND customer_id = '" . (int)$this->customer->getId() . "' AND session_id = '" . $this->db->escape($this->session->getId()) . "' AND product_id = '" . (int)$product_id . "' AND recurring_id = '" . (int)$recurring_id . "' AND `option` = '" . $this->db->escape(json_encode($option)) . "'");
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				$query = $this->db->query("SELECT COUNT(*) AS total, cart_id FROM " . DB_PREFIX . "cart WHERE api_id = '" . (isset($this->session->data['api_id']) ? (int)$this->session->data['api_id'] :0) . "' AND customer_id = '" . (int)$this->customer->getId() . "' AND session_id = '" . $this->db->escape($this->session->getId()) . "' AND product_id = '" . (int)$product_id . "' AND recurring_id = '" . (int)$recurring_id . "' AND `option` = '" . $this->db->escape(json_encode($option)) . "'");
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->db->query("INSERT " . DB_PREFIX . "cart SET api_id = '" . (isset($this->session->data['api_id']) ? (int)$this->session->data['api_id'] : 0) . "', customer_id = '" . (int)$this->customer->getId() . "', session_id = '" . $this->db->escape($this->session->getId()) . "', product_id = '" . (int)$product_id . "', recurring_id = '" . (int)$recurring_id . "', `option` = '" . $this->db->escape(json_encode($option)) . "', quantity = '" . (int)$quantity . "', date_added = NOW()");
+			]]></search>
+			<add position="after"><![CDATA[
+				$cart_id = $this->db->getLastId();
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->db->query("UPDATE " . DB_PREFIX . "cart SET quantity = (quantity + " . (int)$quantity . ") WHERE api_id = '" . (isset($this->session->data['api_id']) ? (int)$this->session->data['api_id'] : 0) . "' AND customer_id = '" . (int)$this->customer->getId() . "' AND session_id = '" . $this->db->escape($this->session->getId()) . "' AND product_id = '" . (int)$product_id . "' AND recurring_id = '" . (int)$recurring_id . "' AND `option` = '" . $this->db->escape(json_encode($option)) . "'");
+			]]></search>
+			<add position="after"><![CDATA[
+				$cart_id = $query->row['cart_id'];
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				public function update(
+			]]></search>
+			<add position="before" offset="2"><![CDATA[
+				return $cart_id;
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if ($product['tax_class_id']) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($product['tax_class_id'] && !$product['notax']) {
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="system/library/cart/currency.php">
+		<operation>
+			<search index="0"><![CDATA[
+				$symbol_left = $this->currencies[$currency]['symbol_left'];
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($format) {
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				$decimal_place = $this->currencies[$currency]['decimal_place'];
+			]]></search>
+			<add position="after"><![CDATA[
+				} else {
+					$symbol_left = '';
+					$symbol_right = '';
+					$decimal_place = $this->currencies[$currency]['decimal_place'];
+				}
+			]]></add>
+		</operation>
+	</file>
+
+</modification>
