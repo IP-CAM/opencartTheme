@@ -1,0 +1,1838 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>Order Entry Quote System Add-on</name>
+    <id>order_entry_quote_system</id>
+    <version>1.5.1.0</version>
+	<author>ACFD Development</author>
+    <link>mailto:develop@acfddev.com</link>
+	<code>oe-quote-system</code>
+
+	<file path="admin/controller/common/column_left.php">
+		<operation>
+			<search><![CDATA[
+				public function index() {
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_quote_system_status') && $this->config->get('module_quote_system_quote_expire')) {
+					$this->load->model('extension/sale/quote_system');
+					$this->model_extension_sale_quote_system->removeQuotes();
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/sale/order.php">
+		<operation>
+			<search index="1"><![CDATA[
+				if (isset($this->request->get['page'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->request->get['page2'])) {
+					$page2 = $this->request->get['page2'];
+					$data['page2'] = $this->request->get['page2'];
+				} else {
+					$page2 = 1;
+				}
+				if (isset($this->request->get['page3'])) {
+					$data['page3'] = $this->request->get['page3'];
+					$page3 = $this->request->get['page3'];
+				} else {
+					$page3 = 1;
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0,2,3,4,5,6,7,8,9"><![CDATA[
+				if (isset($this->request->get['page'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->request->get['page2'])) {
+					$url .= '&page2=' . $this->request->get['page2'];
+				}
+				if (isset($this->request->get['page3'])) {
+					$url .= '&page3=' . $this->request->get['page3'];
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				=> ($page - 1) * $this->config->get('config_limit_admin'),
+			]]></search>
+			<add position="after"><![CDATA[
+				'start2'	=> ($page2 - 1) * $this->config->get('config_limit_admin'),
+				'start3'	=> ($page3 - 1) * $this->config->get('config_limit_admin'),
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['filter_date_modified'] = $filter_date_modified;
+			]]></search>
+			<add position="after"><![CDATA[
+				$data['store_id'] = $this->config->get('config_store_id');
+				if ($this->config->get('config_secure')) {
+					$data['store_url'] = HTTPS_CATALOG;
+				} else {
+					$data['store_url'] = HTTP_CATALOG;
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->response->setOutput($this->load->view('sale/order_list
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					$this->load->language('extension/module/quote_system_language');
+					$order_count = count($results);
+					$pending_count = count($pending_quotes);
+					$ready_count = count($ready_quotes);
+					$data['tab_orders'] = sprintf($this->language->get('tab_orders'), $order_count);
+					$data['tab_pending_quotes'] = sprintf($this->language->get('tab_pending_quotes'), $pending_count);
+					$data['tab_ready_quotes'] = sprintf($this->language->get('tab_ready_quotes'), $ready_count);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$results = $this->model_sale_order->getOrders($filter_data);
+			]]></search>
+			<add position="after"><![CDATA[
+				$data['quote_system_status'] = 0;
+				if ($this->config->get('module_quote_system_status')) {
+					$data['quote_system_status'] = 1;
+					$this->load->language('extension/module/quote_system_language');
+					$this->load->model('extension/sale/quote_system');
+					$data['quote'] = $this->url->link('extension/sale/order_entry/add', 'user_token=' . $this->session->data['user_token'] . '&quote=true', true);
+					$data['pending_quotes'] = array();
+					$pending_quotes_total = $this->model_extension_sale_quote_system->getTotalPendingQuotes($filter_data);
+					$pending_quotes = $this->model_extension_sale_quote_system->getPendingQuotes($filter_data);
+					foreach ($pending_quotes as $pending_quote) {
+						$data['pending_quotes'][] = array(
+							'quote_id'		=> $pending_quote['quote_id'],
+							'customer'		=> $pending_quote['customer'],
+							'products'		=> $pending_quote['products'],
+							'date_added'	=> date($this->language->get('date_format_short'), strtotime($pending_quote['date_added'])),
+							'print'			=> $this->url->link('extension/module/quote_system/printQuote', 'user_token=' . $this->session->data['user_token'] . '&quote_id=' . $pending_quote['quote_id'] . $url, true),
+							'edit'			=> $this->url->link('extension/sale/order_entry/edit', 'user_token=' . $this->session->data['user_token'] . '&quote_id=' . $pending_quote['quote_id'] . $url, true),
+							'delete'		=> $this->url->link('extension/module/quote_system/deleteQuote', 'user_token=' . $this->session->data['user_token'] . '&quote_id=' . $pending_quote['quote_id'] . $url, true)
+						);
+					}
+					$data['ready_quotes'] = array();
+					$ready_quotes_total = $this->model_extension_sale_quote_system->getTotalReadyQuotes($filter_data);
+					$ready_quotes = $this->model_extension_sale_quote_system->getReadyQuotes($filter_data);
+					foreach ($ready_quotes as $ready_quote) {
+						if ($ready_quote['date_modified'] != '0000-00-00 00:00:00') {
+							$date_modified = date($this->language->get('date_format_short'), strtotime($ready_quote['date_modified']));
+						} else {
+							$date_modified = '';
+						}
+						$data['ready_quotes'][] = array(
+							'quote_id'		=> $ready_quote['quote_id'],
+							'customer'		=> $ready_quote['customer'],
+							'products'		=> $ready_quote['products'],
+							'total'			=> $this->currency->format($ready_quote['total'], $ready_quote['currency_code'], $ready_quote['currency_value']),
+							'date_added'	=> date($this->language->get('date_format_short'), strtotime($ready_quote['date_added'])),
+							'date_modified'	=> $date_modified,
+							'print'			=> $this->url->link('extension/module/quote_system/printQuote', 'user_token=' . $this->session->data['user_token'] . '&quote_id=' . $ready_quote['quote_id'] . $url, true),
+							'edit'			=> $this->url->link('extension/sale/order_entry/edit', 'user_token=' . $this->session->data['user_token'] . '&quote_id=' . $ready_quote['quote_id'] . $url, true),
+							'delete'		=> $this->url->link('extension/module/quote_system/deleteQuote', 'user_token=' . $this->session->data['user_token'] . '&quote_id=' . $ready_quote['quote_id'] . $url, true)
+						);
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				$pagination = new Pagination();
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					$old_page = $page;
+					$page = $page2;
+					$pagination = new Pagination();
+					$pagination->total = $pending_quotes_total;
+					$pagination->page = $page2;
+					$pagination->limit = $this->config->get('config_limit_admin');
+					$pagination->url = $this->url->link('sale/order', 'user_token=' . $this->session->data['user_token'] . $url . '&page2={page}', true);
+					$data['pagination2'] = $pagination->render();
+					$data['results2'] = sprintf($this->language->get('text_pagination'), ($pending_quotes_total) ? (($page2 - 1) * $this->config->get('config_limit_admin')) + 1 : 0, ((($page2 - 1) * $this->config->get('config_limit_admin')) > ($pending_quotes_total - $this->config->get('config_limit_admin'))) ? $pending_quotes_total : ((($page2 - 1) * $this->config->get('config_limit_admin')) + $this->config->get('config_limit_admin')), $pending_quotes_total, ceil($pending_quotes_total / $this->config->get('config_limit_admin')));
+					$page = $page3;
+					$pagination = new Pagination();
+					$pagination->total = $ready_quotes_total;
+					$pagination->page = $page3;
+					$pagination->limit = $this->config->get('config_limit_admin');
+					$pagination->url = $this->url->link('sale/order', 'user_token=' . $this->session->data['user_token'] . $url . '&page3={page}', true);
+					$data['pagination3'] = $pagination->render();
+					$data['results3'] = sprintf($this->language->get('text_pagination'), ($ready_quotes_total) ? (($page3 - 1) * $this->config->get('config_limit_admin')) + 1 : 0, ((($page3 - 1) * $this->config->get('config_limit_admin')) > ($ready_quotes_total - $this->config->get('config_limit_admin'))) ? $ready_quotes_total : ((($page3 - 1) * $this->config->get('config_limit_admin')) + $this->config->get('config_limit_admin')), $ready_quotes_total, ceil($ready_quotes_total / $this->config->get('config_limit_admin')));
+					$page = $old_page;
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/model/customer/customer.php">
+		<operation>
+			<search><![CDATA[
+				$customer_id = $this->db->getLastId();
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					$quote_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_quote_account` WHERE LCASE(`email`) = '" . $this->db->escape(strtolower($data['email'])) . "'");
+					if ($quote_query->num_rows) {
+						$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote` SET `customer_id` = '" . (int)$customer_id . "', `quote_account_id` = '0' WHERE `quote_account_id` = '" . (int)$quote_query->row['quote_account_id'] . "'");
+						$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote_cart` SET `customer_id` = '" . (int)$customer_id . "', `quote_account_id` = '0' WHERE `quote_account_id` = '" . (int)$quote_query->row['quote_account_id'] . "'");
+						$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_account` WHERE `quote_account_id` = '" . (int)$quote_query->row['quote_account_id'] . "'");
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->db->query("DELETE FROM " . DB_PREFIX . "customer WHERE customer_id = '" . (int)$customer_id . "'");
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `customer_id` = '" . (int)$customer_id . "'");
+					$quote_query = $this->db->query("SELECT `quote_id` FROM `" . DB_PREFIX . "oe_quote` WHERE `customer_id` = '" . (int)$customer_id . "'");
+					if ($quote_query->num_rows) {
+						foreach ($quote_query->rows as $row) {
+							$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote` WHERE `quote_id` = '" . (int)$row['quote_id'] . "'");
+							$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_history` WHERE `quote_id` = '" . (int)$row['quote_id'] . "'");
+							$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_product` WHERE `quote_id` = '" . (int)$row['quote_id'] . "'");
+							$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_option` WHERE `quote_id` = '" . (int)$row['quote_id'] . "'");
+							$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_total` WHERE `quote_id` = '" . (int)$row['quote_id'] . "'");
+							$optfeedisc_query = $this->db->query("SHOW TABLES LIKE '" . DB_PREFIX . "oe_optfeedisc'");
+							if ($optfeedisc_query->num_rows) {
+								$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_optfeedisc` WHERE `quote_id` = '" . (int)$row['quote_id'] . "'");
+							}
+						}
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/sale/order_invoice.twig">
+		<operation>
+			<search><![CDATA[
+				<b>{{ text_payment_method }}</b> {{ order.payment_method }}<br />
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				{% if text_payment_method %}
+					<b>{{ text_payment_method }}</b> {{ order.payment_method }}<br />
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/view/template/sale/order_list.twig">
+		<operation>
+			<search><![CDATA[
+				<a href="{{ add }}"
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if quote_system_status %}
+					<a href="{{ quote }}" data-toggle="tooltip" title="{{ button_quote }}" class="btn btn-primary"><i class="fa fa-plus"></i> {{ button_quote }}</a>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<form method="post"
+			]]></search>
+			<add position="after"><![CDATA[
+				{% if quote_system_status %}
+					<ul id="order" class="nav nav-tabs nav-justified">
+						<li class="active"><a href="#tab-orders" data-toggle="tab">{{ tab_orders }}</a></li>
+						<li><a href="#tab-pending-quotes" rel="tab" data-toggle="tab">{{ tab_pending_quotes }}</a></li>
+						<li><a href="#tab-ready-quotes" rel="tab" data-toggle="tab">{{ tab_ready_quotes }}</a></li>
+					</ul>
+					<div class="tab-content">
+						<div class="tab-pane active" id="tab-orders">
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				</form>
+			]]></search>
+			<add position="replace" trim="true" offset="4"><![CDATA[
+				{% if quote_system_status %}
+								<div class="row">
+									<div class="col-sm-6 text-left">{{ pagination }}</div>
+									<div class="col-sm-6 text-right">{{ results }}</div>
+								</div>
+							</div>
+							<div class="tab-pane" id="tab-pending-quotes">
+								<div class="table-responsive">
+									<table class="table table-bordered table-hover">
+										<thead>
+											<tr>
+												<td style="width: 1px;" class="text-center"><input type="checkbox" onclick="$('input[name*=\'selected\']').prop('checked', this.checked);" /></td>
+												<td class="text-right">{{ column_quote_id }}</td>
+												<td class="text-left">{{ column_customer }}</td>
+												<td class="text-center">{{ column_products }}</td>
+												<td class="text-left">{{ column_date_added }}</td>
+												<td class="text-right">{{ column_action }}</td>
+											</tr>
+										</thead>
+										<tbody id="pending-quotes-data">
+											{% if pending_quotes %}
+												{% for pending_quote in pending_quotes %}
+													<tr id="pending-{{ pending_quote.quote_id }}">
+														<td class="text-center">
+															{% if pending_quote.quote_id in selected %}
+																<input type="checkbox" name="selected[]" value="{{ pending_quote.quote_id }}" checked="checked" />
+															{% else %}
+																<input type="checkbox" name="selected[]" value="{{ pending_quote.quote_id }}" />
+															{% endif %}
+														</td>
+														<td class="text-right">{{ pending_quote.quote_id }}</td>
+														<td class="text-left">{{ pending_quote.customer }}</td>
+														<td class="text-center">{{ pending_quote.products }}</td>
+														<td class="text-left">{{ pending_quote.date_added }}</td>
+														<td class="text-right">
+															<a href="{{ pending_quote.edit }}" data-toggle="tooltip" title="{{ button_edit }}" class="btn btn-primary"><i class="fa fa-pencil"></i></a>
+															<button type="submit" form="form-order" formaction="{{ pending_quote.print }}" formtarget="_blank" data-toggle="tooltip" title="{{ button_print }}" class="btn btn-info"><i class="fa fa-print"></i></button>
+															<a onclick="if (confirm('{{ text_confirm }}')) { location = '{{ pending_quote.delete }}'; } else { return false; }" data-toggle="tooltip" title="{{ button_delete }}" class="btn btn-danger"><i class="fa fa-trash-o"></i></a>
+														</td>
+													</tr>
+												{% endfor %}
+											{% else %}
+												<tr>
+													<td class="text-center" colspan="6">{{ text_no_pending_quotes }}</td>
+												</tr>
+											{% endif %}
+										</tbody>
+									</table>
+								</div>
+								<div class="row">
+									<div class="col-sm-6 text-left">{{ pagination2 }}</div>
+									<div class="col-sm-6 text-right">{{ results2 }}</div>
+								</div>
+							</div>
+							<div class="tab-pane" id="tab-ready-quotes">
+								<div class="table-responsive">
+									<table class="table table-bordered table-hover">
+										<thead>
+											<tr>
+												<td style="width: 1px;" class="text-center"><input type="checkbox" onclick="$('input[name*=\'selected\']').prop('checked', this.checked);" /></td>
+												<td class="text-right">{{ column_quote_id }}</td>
+												<td class="text-left">{{ column_customer }}</td>
+												<td class="text-center">{{ column_products }}</td>
+												<td class="text-right">{{ column_total }}</td>
+												<td class="text-left">{{ column_date_added }}</td>
+												<td class="text-left">{{ column_date_modified }}</td>
+												<td class="text-right">{{ column_action }}</td>
+											</tr>
+										</thead>
+										<tbody id="ready-quotes-data">
+											{% if ready_quotes %}
+												{% for ready_quote in ready_quotes %}
+													<tr id="ready-{{ ready_quote['quote_id'] }}">
+														<td class="text-center">
+															{% if ready_quote.quote_id in selected %}
+																<input type="checkbox" name="selected[]" value="{{ ready_quote.quote_id }}" checked="checked" />
+															{% else %}
+																<input type="checkbox" name="selected[]" value="{{ ready_quote.quote_id }}" />
+															{% endif %}
+														</td>
+														<td class="text-right">{{ ready_quote.quote_id }}</td>
+														<td class="text-left">{{ ready_quote.customer }}</td>
+														<td class="text-center">{{ ready_quote.products }}</td>
+														<td class="text-right">{{ ready_quote.total }}</td>
+														<td class="text-left">{{ ready_quote.date_added }}</td>
+														<td class="text-left">{{ ready_quote.date_modified }}</td>
+														<td class="text-right">
+															<a href="{{ ready_quote.edit }}" data-toggle="tooltip" title="{{ button_edit }}" class="btn btn-primary"><i class="fa fa-pencil"></i></a>
+															<button type="submit" form="form-order" formaction="{{ ready_quote.print }}" formtarget="_blank" data-toggle="tooltip" title="{{ button_print }}" class="btn btn-info"><i class="fa fa-print"></i></button>
+															<button id="button-email{{ ready_quote.quote_id }}" type="button" data-toggle="tooltip" title="{{ button_resend }}" rel="{{ ready_quote.quote_id }}" class="btn btn-primary resend-email"><i class="fa fa-envelope"></i></button>
+															<button id="button-convert{{ ready_quote.quote_id }}" type="button" data-toggle="tooltip" title="{{ button_convert }}" rel="{{ ready_quote.quote_id }}" class="btn btn-primary convert-quote"><i class="fa fa-usd"></i></button>
+															<a onclick="if (confirm('{{ text_confirm }}')) { location = '{{ ready_quote.delete }}'; } else { return false; }" data-toggle="tooltip" title="{{ button_delete }}" class="btn btn-danger"><i class="fa fa-trash-o"></i></a>
+														</td>
+													</tr>
+												{% endfor %}
+											{% else %}
+												<tr>
+													<td class="text-center" colspan="8">{{ text_no_ready_quotes }}</td>
+												</tr>
+											{% endif %}
+										</tbody>
+									</table>
+								</div>
+								<div class="row">
+									<div class="col-sm-6 text-left">{{ pagination3 }}</div>
+									<div class="col-sm-6 text-right">{{ results3 }}</div>
+								</div>
+							</div>
+						</div>
+					</form>
+				{% else %}
+					</form>
+					<div class="row">
+						<div class="col-sm-6 text-left">{{ pagination }}</div>
+						<div class="col-sm-6 text-right">{{ results }}</div>
+					</div>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				url = '';
+			]]></search>
+			<add position="after"><![CDATA[
+				{% if page2 %}
+					url += '&page2=1';
+				{% elseif page3 %}
+					url += '&page3=1';
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				<script type="text/javascript">
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if quote_system_status %}
+					<script type="text/javascript"><!--
+						$(document).ready(function() {
+							{% if page2 %}
+								$('.nav-tabs a[href="#tab-pending-quotes"]').tab('show');
+							{% elseif page3 %}
+								$('.nav-tabs a[href="#tab-ready-quotes"]').tab('show');
+							{% endif %}
+						});
+					//--></script>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<script src="view/javascript/jquery/datetimepicker/bootstrap-datetimepicker.min.js" type="text/javascript"></script>
+			]]></search>
+			<add position="before" offset="1"><![CDATA[
+				{% if quote_system_status %}
+					$('.convert-quote').on('click', function() {
+						if (confirm('{{ text_confirm_convert }}')) {
+							var quote_id = $(this).attr('rel');
+							$.ajax({
+								url: 'index.php?route=extension/module/quote_system/convertQuote&user_token={{ user_token }}&quote_id=' + quote_id,
+								type: 'GET',
+								dataType: 'json',
+								beforeSend: function() {
+									$('#button-convert' + quote_id).button('loading');
+								},
+								complete: function() {
+									$('#button-convert' + quote_id).button('reset');
+								},
+								success: function(json) {
+									if (json['error']) {
+										$('#content > .container-fluid').prepend('<div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> ' + json['error'] + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+									} else {
+										location.reload();
+									}
+								},
+								error: function(xhr, ajaxOptions, thrownError) {
+									alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+								}
+							});
+						} else {
+							return false;
+						}
+					});
+					$('.resend-email').on('click', function() {
+						var quote_id = $(this).attr('rel');
+						$.ajax({
+							url: 'index.php?route=extension/module/quote_system/resendEmail&user_token={{ user_token }}&quote_id=' + quote_id,
+							type: 'GET',
+							dataType: 'json',
+							beforeSend: function() {
+								$('#button-email' + quote_id).button('loading');
+							},
+							complete: function() {
+								$('#button-email' + quote_id).button('reset');
+							},
+							success: function(json) {
+								$('#content > .container-fluid').prepend('<div class="alert alert-success"><i class="fa fa-check-circle"></i> ' + json['success'] + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+							},
+							error: function(xhr, ajaxOptions, thrownError) {
+								alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+							}
+						});
+					});
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				var element = this;
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($(element).attr('rel') != 'tab') {
+			]]></add>
+		</operation>
+		<operation>
+			<search index="0"><![CDATA[
+				location = '{{ delete }}';
+			]]></search>
+			<add position="after" offset="6"><![CDATA[
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/account/account.php">
+		<operation>
+			<search><![CDATA[
+				$this->response->setOutput($this->load->view('account/account'
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['quote_system_status'] = 0;
+				if ($this->config->get('module_quote_system_status')) {
+					$data['quote_system_status'] = 1;
+					$this->load->language('extension/account/quote_system_language');
+					$data['quotes'] = $this->url->link('extension/account/quote_system', '', true);
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/account/login.php">
+		<operation>
+			<search><![CDATA[
+				$this->response->redirect(str_replace('&amp;', '&', $this->request->post['redirect']));
+			]]></search>
+			<add position="after" offset="2"><![CDATA[
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
+			]]></search>
+			<add position="after"><![CDATA[
+				if (isset($this->session->data['quote_account_id'])) {
+					unset($this->session->data['quote_guest_id']);
+					if (isset($this->request->post['redirect']) && (strpos($this->request->post['redirect'], $this->config->get('config_url')) !== false || strpos($this->request->post['redirect'], $this->config->get('config_ssl')) !== false)) {
+						$this->response->redirect(str_replace('&amp;', '&', $this->request->post['redirect']));
+					} else {
+						$this->response->redirect($this->url->link('extension/account/quote_system', '', true));
+					}
+				} else {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if ($this->customer->isLogged()) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->session->data['quote_account_id'])) {
+					$this->response->redirect($this->url->link('extension/account/quote_system', '', true));
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/account/register.php">
+		<operation>
+			<search><![CDATA[
+				$this->response->redirect($this->url->link('account/success'));
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->session->data['redirect'])) {
+					$redirect = $this->session->data['redirect'];
+					unset($this->session->data['redirect']);
+				} else {
+					$redirect = $this->url->link('account/success');
+				}
+				$this->response->redirect($redirect);
+			]]></add>
+		</operation>
+	</file>
+	
+	<file path="catalog/controller/api/order.php">
+		<operation>
+			<search><![CDATA[
+				public function delete() {
+			]]></search>
+			<add position="before"><![CDATA[
+				public function quoteedit() {
+					$this->load->language('api/order');
+					$json = array();
+					if (!isset($this->session->data['api_id'])) {
+						$json['error'] = $this->language->get('error_permission');
+					} else {
+						if (isset($this->request->get['quote_id'])) {
+							$quote_id = $this->request->get['quote_id'];
+						} elseif (isset($this->request->post['quote_id'])) {
+							$quote_id = $this->request->post['quote_id'];
+						} else {
+							$quote_id = 0;
+						}
+						if (isset($this->request->post['comment'])) {
+							$comment = $this->request->post['comment'];
+						} else {
+							$comment = '';
+						}
+						$this->load->model('extension/checkout/quote_system');
+						$quote_products = $this->cart->getProducts();
+						$this->model_extension_checkout_quote_system->editQuote($quote_id, $quote_products, $comment);
+						$json['success'] = $this->language->get('text_quote_success');
+					}
+					if (isset($this->request->server['HTTP_ORIGIN'])) {
+						$this->response->addHeader('Access-Control-Allow-Origin: ' . $this->request->server['HTTP_ORIGIN']);
+						$this->response->addHeader('Access-Control-Allow-Methods: GET, PUT, POST, DELETE, OPTIONS');
+						$this->response->addHeader('Access-Control-Max-Age: 1000');
+						$this->response->addHeader('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+					}
+					$this->response->addHeader('Content-Type: application/json');
+					$this->response->setOutput(json_encode($json));
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/checkout/cart.php">
+		<operation>
+			<search><![CDATA[
+				if ($this->cart->hasProducts() || !empty($this->session->data['vouchers'])) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if ($this->cart->hasProducts() || $this->cart->hasQuoteProducts() || !empty($this->session->data['vouchers'])) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->response->setOutput($this->load->view('checkout/cart'
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					if ($this->cart->hasProducts() || !empty($this->session->data['vouchers'])) {
+						$data['button_checkout'] = $this->language->get('button_checkout');
+					} else {
+						$data['button_checkout'] = '';
+					}
+				} else {
+					$data['button_checkout'] = $this->language->get('button_checkout');
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->url->link('product/product', 'product_id=' . $product['product_id'])
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				$product_href
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['products'][] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($product['custom_product']) && $product['custom_product'] == 1) {
+					$product_href = '';
+				} else {
+					$product_href = $this->url->link('product/product', 'product_id=' . $product['product_id']);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$products = $this->cart->getProducts();
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['quote_system_status'] = 0;
+				if ($this->config->get('module_quote_system_status')) {
+					$data['quote_system_status'] = 1;
+					$data['quoteproducts'] = array();
+					if ($this->config->get('module_quote_system_catalog_status') && $this->cart->hasQuoteProducts()) {
+						$this->load->language('extension/checkout/quote_system');
+						$data['action2'] = $this->url->link('extension/checkout/quote_system/edit', '', true);
+						if (!$this->cart->hasProducts() && empty($this->session->data['vouchers']) && ($this->customer->isLogged() || isset($this->session->data['quote_account_id']))) {
+							$data['request_quote'] = $this->url->link('extension/checkout/quote_system/requestQuote', '', true);
+							$data['text_register_quote'] = '';
+						} elseif ($this->config->get('module_quote_system_guest')) {
+							$data['request_quote'] = $this->url->link('extension/checkout/quote_system/createQuoteAccount', '', true);
+							$data['text_register_quote'] = '';
+						} else {
+							$data['request_quote'] = $this->url->link('account/register', '', true);
+							$this->session->data['redirect'] = $this->url->link('extension/checkout/quote_system/requestQuote', '', true);
+						}
+						$quoteproducts = $this->cart->getQuoteProducts();
+						foreach ($quoteproducts as $quoteproduct) {
+							$quoteproduct_total = 0;
+							foreach ($quoteproducts as $quoteproduct_2) {
+								if ($quoteproduct_2['product_id'] == $quoteproduct['product_id']) {
+									$quoteproduct_total += $quoteproduct_2['quantity'];
+								}
+							}
+							if ($quoteproduct['minimum'] > $quoteproduct_total) {
+								$data['error_warning'] = sprintf($this->language->get('error_minimum'), $quoteproduct['name'], $quoteproduct['minimum']);
+							}
+							if ($quoteproduct['image']) {
+								$quoteimage = $this->model_tool_image->resize($quoteproduct['image'], $this->config->get('theme_' . $this->config->get('config_theme') . '_image_cart_width'), $this->config->get('theme_' . $this->config->get('config_theme') . '_image_cart_height'));
+							} else {
+								$quoteimage = '';
+							}
+							$quoteoption_data = array();
+							foreach ($quoteproduct['option'] as $quoteoption) {
+								if ($quoteoption['type'] != 'file') {
+									$value = $quoteoption['value'];
+								} else {
+									$upload_info = $this->model_tool_upload->getUploadByCode($quoteoption['value']);
+									if ($upload_info) {
+										$value = $upload_info['name'];
+									} else {
+										$value = '';
+									}
+								}
+								$quoteoption_data[] = array(
+									'name'  => $quoteoption['name'],
+									'value' => (utf8_strlen($value) > 20 ? utf8_substr($value, 0, 20) . '..' : $value)
+								);
+							}
+							$data['quoteproducts'][] = array(
+								'quote_cart_id'	=> (isset($quoteproduct['quote_cart_id']) ? $quoteproduct['quote_cart_id'] : $quoteproduct['key']),
+								'thumb'			=> $quoteimage,
+								'name'			=> $quoteproduct['name'],
+								'model'			=> $quoteproduct['model'],
+								'option'		=> $quoteoption_data,
+								'sort_order'	=> (isset($quoteproduct['sort_order']) ? $quoteproduct['sort_order'] : 0),
+								'recurring'		=> '',
+								'quantity'		=> $quoteproduct['quantity'],
+								'stock'			=> true,
+								'reward'		=> 0,
+								'price'			=> 0,
+								'total'			=> 0,
+								'href'			=> $this->url->link('product/product', 'product_id=' . $quoteproduct['product_id'])
+							);
+						}
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/checkout/checkout.php">
+		<operation>
+			<search><![CDATA[
+				$data['account'] = $this->session->data['account'];
+			]]></search>
+			<add position="after"><![CDATA[
+				} elseif (isset($this->session->data['quote_guest'])) {
+					$data['account'] = 'guest';
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/checkout/confirm.php">
+		<operation>
+			<search><![CDATA[
+				$order_data['products'] = array();
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['quote_system_status'] = 0;
+				if ($this->config->get('module_quote_system_status')) {
+					$data['quote_system_status'] = 1;
+					$order_data['quoteproducts'] = array();
+					if (isset($this->session->data['quote_account_id'])) {
+						$order_data['quote_account_id'] = $this->session->data['quote_account_id'];
+					} else {
+						$order_data['quote_account_id'] = 0;
+					}
+					if ($this->cart->hasQuoteProducts()) {
+						foreach ($this->cart->getQuoteProducts() as $quoteproduct) {
+							$option_data = array();
+							foreach ($quoteproduct['option'] as $quoteoption) {
+								$option_data[] = array(
+									'product_option_id'       => $quoteoption['product_option_id'],
+									'product_option_value_id' => $quoteoption['product_option_value_id'],
+									'option_id'               => $quoteoption['option_id'],
+									'option_value_id'         => $quoteoption['option_value_id'],
+									'name'                    => $quoteoption['name'],
+									'value'                   => $quoteoption['value'],
+									'type'                    => $quoteoption['type']
+								);
+							}
+							$order_data['quoteproducts'][] = array(
+								'product_id'		=> $quoteproduct['product_id'],
+								'custom_product'	=> $quoteproduct['custom_product'],
+								'name'				=> $quoteproduct['name'],
+								'model'				=> $quoteproduct['model'],
+								'sku'				=> $quoteproduct['sku'],
+								'upc'				=> $quoteproduct['upc'],
+								'option'			=> $option_data,
+								'location'			=> $quoteproduct['location'],
+								'shipping'			=> $quoteproduct['shipping'],
+								'image'				=> $quoteproduct['image'],
+								'tax_class_id'		=> $quoteproduct['tax_class_id'],
+								'sort_order'		=> (isset($quoteproduct['sort_order']) ? $quoteproduct['sort_order'] : 0),
+								'weight'			=> $quoteproduct['weight'],
+								'weight_class_id'	=> $quoteproduct['weight_class_id'],
+								'length'			=> $quoteproduct['length'],
+								'length_class_id'	=> $quoteproduct['length_class_id'],
+								'width'				=> $quoteproduct['width'],
+								'height'			=> $quoteproduct['height'],
+								'quantity'			=> $quoteproduct['quantity'],
+								'subtract'			=> $quoteproduct['subtract'],
+								'price'				=> $quoteproduct['price'],
+								'total'				=> $quoteproduct['total'],
+								'tax'				=> 0,
+								'href'				=> $this->url->link('product/product', 'product_id=' . $quoteproduct['product_id'])
+							);
+						}
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->url->link('product/product', 'product_id=' . $product['product_id'])
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				$product_href
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['products'][] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($product['custom_product']) && $product['custom_product'] == 1) {
+					$product_href = '';
+				} else {
+					$product_href = $this->url->link('product/product', 'product_id=' . $product['product_id']);
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->session->data['order_id'] = $this->model_checkout_order->addOrder($order_data);
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					$data['quoteproducts'] = array();
+					if ($this->cart->hasQuoteProducts()) {
+						foreach ($this->cart->getQuoteProducts() as $quoteproduct) {
+							$option_data = array();
+							foreach ($quoteproduct['option'] as $quoteoption) {
+								$option_data[] = array(
+									'product_option_id'       => $quoteoption['product_option_id'],
+									'product_option_value_id' => $quoteoption['product_option_value_id'],
+									'option_id'               => $quoteoption['option_id'],
+									'option_value_id'         => $quoteoption['option_value_id'],
+									'name'                    => $quoteoption['name'],
+									'value'                   => $quoteoption['value'],
+									'type'                    => $quoteoption['type']
+								);
+							}
+							$data['quoteproducts'][] = array(
+								'product_id'		=> $quoteproduct['product_id'],
+								'custom_product'	=> $quoteproduct['custom_product'],
+								'name'				=> $quoteproduct['name'],
+								'model'				=> $quoteproduct['model'],
+								'sku'				=> $quoteproduct['sku'],
+								'upc'				=> $quoteproduct['upc'],
+								'option'			=> $option_data,
+								'location'			=> $quoteproduct['location'],
+								'shipping'			=> $quoteproduct['shipping'],
+								'image'				=> $quoteproduct['image'],
+								'tax_class_id'		=> $quoteproduct['tax_class_id'],
+								'sort_order'		=> (isset($quoteproduct['sort_order']) ? $quoteproduct['sort_order'] : 0),
+								'weight'			=> $quoteproduct['weight'],
+								'weight_class_id'	=> $quoteproduct['weight_class_id'],
+								'length'			=> $quoteproduct['length'],
+								'length_class_id'	=> $quoteproduct['length_class_id'],
+								'width'				=> $quoteproduct['width'],
+								'height'			=> $quoteproduct['height'],
+								'quantity'			=> $quoteproduct['quantity'],
+								'subtract'			=> $quoteproduct['subtract'],
+								'price'				=> $quoteproduct['price'],
+								'total'				=> $quoteproduct['total'],
+								'tax'				=> 0,
+								'href'				=> $this->url->link('product/product', 'product_id=' . $quoteproduct['product_id'])
+							);
+						}
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/checkout/guest.php">
+		<operation>
+			<search><![CDATA[
+				if (isset($this->session->data['guest']['customer_group_id'])) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->session->data['quote_guest']['customer_group_id'])) {
+					$data['customer_group_id'] = $this->session->data['quote_guest']['customer_group_id'];
+				} elseif (isset($this->session->data['guest']['customer_group_id'])) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (isset($this->session->data['guest']['firstname'])) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->session->data['quote_guest']['firstname'])) {
+					$data['firstname'] = $this->session->data['quote_guest']['firstname'];
+				} elseif (isset($this->session->data['guest']['firstname'])) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (isset($this->session->data['guest']['lastname'])) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->session->data['quote_guest']['lastname'])) {
+					$data['lastname'] = $this->session->data['quote_guest']['lastname'];
+				} elseif (isset($this->session->data['guest']['lastname'])) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (isset($this->session->data['guest']['email'])) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->session->data['quote_guest']['email'])) {
+					$data['email'] = $this->session->data['quote_guest']['email'];
+				} elseif (isset($this->session->data['guest']['email'])) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (isset($this->session->data['guest']['telephone'])) {
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				if (isset($this->session->data['quote_guest']['telephone'])) {
+					$data['telephone'] = $this->session->data['quote_guest']['telephone'];
+				} elseif (isset($this->session->data['guest']['telephone'])) {
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$data['shipping_required'] = $this->cart->hasShipping();
+			]]></search>
+			<add position="after"><![CDATA[
+				$data['quote_system_status'] = 0;
+				if ($this->config->get('module_quote_system_status')) {
+					$data['quote_system_status'] = 1;
+					if ($this->cart->hasQuoteProducts() && (!$this->customer->isLogged() && !isset($this->session->data['quote_account_id']))) {
+						$this->load->language('extension/account/quote_system_language');
+					} else {
+						$data['text_why_password'] = '';
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				if (!isset($this->request->post['zone_id']) || $this->request->post['zone_id'] == '' || !is_numeric($this->request->post['zone_id'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					if (isset($this->request->post['password'])) {
+						$this->load->model('extension/checkout/quote_system');
+						if ($this->model_extension_checkout_quote_system->checkEmail($this->request->post['email'])) {
+							$json['error']['warning'] = $this->language->get('error_exists');
+						}
+						if ((utf8_strlen($this->request->post['password']) < 4) || (utf8_strlen($this->request->post['password']) > 20)) {
+							$json['error']['password'] = $this->language->get('error_password');
+						}
+						if ($this->request->post['confirm'] != $this->request->post['password']) {
+							$json['error']['confirm'] = $this->language->get('error_confirm');
+						}
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->session->data['account'] = 'guest';
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					if (isset($this->request->post['password'])) {
+						$quote_account = array(
+							'firstname'			=> $this->request->post['firstname'],
+							'lastname'			=> $this->request->post['lastname'],
+							'email'				=> $this->request->post['email'],
+							'telephone'			=> $this->request->post['telephone'],
+							'customer_group_id'	=> $this->config->get('config_customer_group_id'),
+							'password'			=> $this->request->post['password']
+						);
+						$quote_account_id = $this->model_extension_checkout_quote_system->createQuoteAccount($quote_account);
+						if (isset($this->session->data['quote_guest_id'])) {
+							$this->model_extension_checkout_quote_system->updateQuoteCart($this->session->data['quote_guest_id'], $quote_account_id);
+							unset($this->session->data['quote_guest_id']);
+						}
+						$this->session->data['quote_account_id'] = $quote_account_id;
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/checkout/login.php">
+		<operation>
+			<search><![CDATA[
+				$data['checkout_guest'] = ($this->config->get('config_checkout_guest') && !$this->config->get('config_customer_price') && !$this->cart->hasDownload());
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->cart->hasQuoteProducts() && !$this->config->get('module_quote_system_guest')) {
+					$data['checkout_guest'] = 0;
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/checkout/payment_address.php">
+		<operation>
+			<search><![CDATA[
+				$this->response->setOutput($this->load->view('checkout/payment_address
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->session->data['quote_account_id'])) {
+					$this->load->model('account/quote_system');
+					$data['firstname'] = $this->session->data['quote_guest']['firstname'];
+					$data['lastname'] = $this->session->data['quote_guest']['lastname'];
+					$address = $this->model_account_quote_system->getAddress($this->session->data['quote_account_id']);
+					$data['company'] = $address['company'];
+					$data['address_1'] = $address['address_1'];
+					$data['address_2'] = $address['address_2'];
+					$data['city'] = $address['city'];
+					$data['postcode'] = $address['postcode'];
+					$data['country'] = $address['country'];
+					$data['country_id'] = $address['country_id'];
+					$data['zone'] = $address['zone'];
+					$data['zone_id'] = $address['zone_id'];
+				} else {
+					$data['city'] = '';
+					$data['lastname'] = '';
+					$data['company'] = '';
+					$data['address_1'] = '';
+					$data['address_2'] = '';
+					$data['city'] = '';
+					$data['postcode'] = '';
+					$data['country'] = '';
+					$data['zone'] = '';
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/checkout/success.php">
+		<operation>
+			<search><![CDATA[
+				$this->cart->clear();
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					$this->cart->clearquote();
+					unset($this->session->data['quote']);
+					unset($this->session->data['oe']);
+					if (isset($this->session->data['quote_id'])) {
+						$this->load->model('extension/account/quote_system');
+						$this->model_extension_account_quote_system->delete($this->session->data['quote_id']);
+						unset($this->session->data['quote_id']);
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/common/header.php">
+		<operation>
+			<search><![CDATA[
+				return $this->load->view('common/header
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					if ($this->config->get('module_quote_system_catalog_status')) {
+						$this->load->language('extension/account/quote_system_language');
+						$data['quote'] = $this->url->link('extension/account/quote_system', '', true);
+					}
+					if ($this->config->get('module_quote_system_quote_expire')) {
+						$this->load->model('extension/checkout/quote_system');
+						$this->model_extension_checkout_quote_system->removeQuotes();
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/extension/module/account.php">
+		<operation>
+			<search><![CDATA[
+				return $this->load->view('extension/module/account'
+			]]></search>
+			<add position="before"><![CDATA[
+				$data['quote_system_status'] = 0;
+				if ($this->config->get('module_quote_system_status')) {
+					$data['quote_system_status'] = 1;
+					$this->load->language('extension/account/quote_system_language');
+					$data['quotes'] = $this->url->link('extension/account/quote_system', '', true);
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/mail/order.php">
+		<operation>
+			<search><![CDATA[
+				$data['title'] = sprintf($language->get('text_subject'), $order_info['store_name'], $order_info['order_id']);
+			]]></search>
+			<add position="before"><![CDATA[
+				if (isset($this->session->data['quote_id'])) {
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote` WHERE `quote_id` = '" . (int)$this->session->data['quote_id'] . "'");
+					$history_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_quote_history` WHERE `quote_id` = '" . (int)$this->session->data['quote_id'] . "'");
+					if ($history_query->num_rows) {
+						foreach ($history_query->rows as $row) {
+							$this->db->query("INSERT INTO `" . DB_PREFIX . "order_history` SET `order_id` = '" . (int)$order_info['order_id'] . "', `order_status_id` = '" . (int)$row['order_status_id'] . "', `notify` = '" . (int)$row['notify'] . "', `comment` = '" . $this->db->escape($row['comment']) . "', `date_added` = '" . $this->db->escape($row['date_added']) . "'");
+						}
+					}
+					if ($this->config->get('module_quote_system_subtract_stock')) {
+						$qproduct_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_quote_product` WHERE `quote_id` = '" . (int)$this->session->data['quote_id'] . "'");
+						foreach ($qproduct_query->rows as $qproduct) {
+							$this->db->query("UPDATE `" . DB_PREFIX . "product` SET `quantity` = (`quantity` + " . (int)$qproduct['quantity'] . ") WHERE `product_id` = '" . (int)$qproduct['product_id'] . "' AND `subtract` = '1'");
+							$qoption_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_quote_option` WHERE `quote_id` = '" . (int)$this->session->data['quote_id'] . "' AND `quote_product_id` = '" . (int)$qproduct['quote_product_id'] . "'");
+							foreach ($qoption_query->rows as $qoption) {
+								$this->db->query("UPDATE `" . DB_PREFIX . "product_option_value` SET `quantity` = (`quantity` + " . (int)$qproduct['quantity'] . ") WHERE `product_option_value_id` = '" . (int)$qoption['product_option_value_id'] . "' AND `subtract` = '1'");
+							}
+						}
+					}
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_history` WHERE `quote_id` = '" . (int)$this->session->data['quote_id'] . "'");
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_product` WHERE `quote_id` = '" . (int)$this->session->data['quote_id'] . "'");
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_option` WHERE `quote_id` = '" . (int)$this->session->data['quote_id'] . "'");
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_total` WHERE `quote_id` = '" . (int)$this->session->data['quote_id'] . "'");
+					$optfeedisc_query = $this->db->query("SHOW TABLES LIKE '" . DB_PREFIX . "oe_optfeedisc'");
+					if ($optfeedisc_query->num_rows) {
+						$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_optfeedisc` WHERE `quote_id` = '" . (int)$this->session->data['quote_id'] . "'");
+					}
+					unset($this->session->data['quote_id']);
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/product/product.php">
+		<operation>
+			<search><![CDATA[
+				$this->model_catalog_product->updateViewed($this->request->get['product_id']);
+			]]></search>
+			<add position="after"><![CDATA[
+				$data['quote_system_status'] = 0;
+				if ($this->config->get('module_quote_system_status') && $this->config->get('module_quote_system_catalog_status')) {
+					$data['quote_system_status'] = 1;
+					$this->load->language('extension/account/quote_system_language');
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/account/customer.php">
+		<operation>
+			<search><![CDATA[
+				return $customer_id;
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					$quote_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_quote_account` WHERE LCASE(`email`) = '" . $this->db->escape(strtolower($data['email'])) . "'");
+					if ($quote_query->num_rows) {
+						$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote` SET `customer_id` = '" . (int)$customer_id . "', `quote_account_id` = '0' WHERE `quote_account_id` = '" . (int)$quote_query->row['quote_account_id'] . "'");
+						$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote_cart` SET `customer_id` = '" . (int)$customer_id . "', `quote_account_id` = '0', `quote_guest_id` = '0' WHERE `quote_account_id` = '" . (int)$quote_query->row['quote_account_id'] . "'");
+						$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_account` WHERE `quote_account_id` = '" . (int)$quote_query->row['quote_account_id'] . "'");
+					} elseif (isset($this->session->data['quote_guest_id'])) {
+						$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote_cart` SET `customer_id` = '" . (int)$customer_id . "', `quote_account_id` = '0', `quote_guest_id` = '0' WHERE `quote_guest_id` = '" . (int)$this->session->data['quote_guest_id'] . "'");
+					}
+					unset($this->session->data['quote_account_id']);
+					unset($this->session->data['quote_guest_id']);
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/checkout/order.php">
+		<operation>
+			<search><![CDATA[
+				$order_id = $this->db->getLastId();
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_quote_system_status')) {
+					if (!empty($data['quoteproducts'])) {
+						$this->load->model('extension/checkout/quote_system');
+						$this->model_extension_checkout_quote_system->addQuote($data);
+						$this->cart->clearquote();
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+	
+	<file path="catalog/view/theme/default/template/account/account.twig">
+		<operation>
+			<search><![CDATA[
+				<h2>{{ text_my_orders }}</h2>
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if quote_system_status %}
+					<h2>{{ text_my_quotes }}</h2>
+					<ul class="list-unstyled">
+						<li><a href="{{ quotes }}">{{ text_quotes }}</a></li>
+					</ul>
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/view/theme/default/template/checkout/cart.twig">
+		<operation>
+			<search><![CDATA[
+				<h1>{{ heading_title }}
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if button_checkout %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<div class="buttons clearfix">
+			]]></search>
+			<add position="before"><![CDATA[
+				{% endif %}
+				{% if quote_system_status and quoteproducts %}
+					<h1>{{ text_quote_request }}</h1>
+					<div class="table-responsive">
+						<table class="table table-bordered">
+							<thead>
+								<tr>
+									<td class="text-center">{{ column_image }}</td>
+									<td class="text-left">{{ column_name }}</td>
+									<td class="text-left">{{ column_model }}</td>
+									<td class="text-left">{{ column_quantity }}</td>
+									<td class="text-right">{{ column_price }}</td>
+									<td class="text-right">{{ column_total }}</td>
+								</tr>
+							</thead>
+							<tbody>
+								{% for quoteproduct in quoteproducts %}
+									<tr>
+										<td class="text-center">
+											<img src="{{ quoteproduct['thumb'] }}" alt="{{ quoteproduct['name'] }}" title="{{ quoteproduct['name'] }}" class="img-thumbnail" />
+										</td>
+										<td class="text-left">
+											{{ quoteproduct['name'] }}
+											{% if quoteproduct.option %}
+												{% for quoteoption in quoteproduct.option %}
+													<br />
+													<small>{{ quoteoption['name'] }}: {{ quoteoption['value'] }}</small>
+												{% endfor %}
+											{% endif %}
+										</td>
+										<td class="text-left">{{ quoteproduct['model'] }}</td>
+										<td class="text-left">
+											<div class="input-group btn-block" style="max-width: 200px;">
+												<input type="text" name="quantity[{{ quoteproduct['quote_cart_id'] }}]" value="{{ quoteproduct['quantity'] }}" size="1" class="form-control" />
+												<span class="input-group-btn">
+													<button type="submit" onclick="$('form').attr('action', '{{ action2 }}');" data-toggle="tooltip" title="{{ button_update }}" class="btn btn-primary"><i class="fa fa-refresh"></i></button>
+													<button type="button" data-toggle="tooltip" title="{{ button_remove }}" class="btn btn-danger" onclick="removequote('{{ quoteproduct['quote_cart_id'] }}');"><i class="fa fa-times-circle"></i></button>
+												</span>
+											</div>
+										</td>
+										<td class="text-right">{{ text_quote_request }}</td>
+										<td class="text-right">{{ text_quote_request }}</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<a href="{{ checkout }}" class="btn btn-primary">{{ button_checkout }}</a>
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				{% if quote_system_status and quoteproducts and request_quote %}
+					{% if text_register_quote %}
+						<span style="color: red;"><b><small>{{ text_register_quote }}</small></b></span>
+					{% endif %}
+					<a href="{{ request_quote }}" class="btn btn-primary" style="margin-left:10px;">{{ button_request_quote }}</a>
+				{% endif %}
+				{% if button_checkout %}
+					<a href="{{ checkout }}" class="btn btn-primary">{{ button_checkout }}</a>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<a href="{{ product.href }}"><img src="{{ product.thumb }}" alt="{{ product.name }}" title="{{ product.name }}" class="img-thumbnail" /></a>
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				{% if product.href %}
+					<a href="{{ product.href }}"><img src="{{ product.thumb }}" alt="{{ product.name }}" title="{{ product.name }}" class="img-thumbnail" /></a>
+				{% else %}
+					<img src="{{ product.thumb }}" alt="{{ product.name }}" title="{{ product.name }}" class="img-thumbnail" />
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				<a href="{{ product.href }}">{{ product.name }}</a>
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				{% if product.href %}
+					<a href="{{ product.href }}">{{ product.name }}</a>
+				{% else %}
+					{{ product.name }}
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				{{ footer }}
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if quote_system_status %}
+					<script type="text/javascript"><!--
+						function removequote(key) {
+							$.ajax({
+								url: 'index.php?route=extension/checkout/quote_system/remove',
+								type: 'post',
+								data: 'key=' + key,
+								dataType: 'json',
+								beforeSend: function() {
+									$('#cart > button').button('loading');
+								},
+								complete: function() {
+									$('#cart > button').button('reset');
+								},
+								success: function(json) {
+									if (getURLVar('route') == 'checkout/cart' || getURLVar('route') == 'checkout/checkout') {
+										location = 'index.php?route=checkout/cart';
+									} else {
+										$('#cart > ul').load('index.php?route=common/cart/info ul li');
+									}
+								},
+								error: function(xhr, ajaxOptions, thrownError) {
+									alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+								}
+							});
+						}
+					//--></script>
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/view/theme/*/template/checkout/checkout.twig">
+		<operation error="skip">
+			<search><![CDATA[
+				data: $('#collapse-payment-address input[type=\'text\'], #collapse-payment-address input[type=\'date\'], #collapse-payment-address input[type=\'datetime-local\'], #collapse-payment-address input[type=\'time\'], #collapse-payment-address input[type=\'checkbox\']:checked, #collapse-payment-address input[type=\'radio\']:checked, #collapse-payment-address input[type=\'hidden\'], #collapse-payment-address textarea, #collapse-payment-address select'),
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				data: $('#collapse-payment-address input[type=\'text\'], #collapse-payment-address input[name=\'password\'], #collapse-payment-address input[name=\'confirm\'], #collapse-payment-address input[type=\'date\'], #collapse-payment-address input[type=\'datetime-local\'], #collapse-payment-address input[type=\'time\'], #collapse-payment-address input[type=\'checkbox\']:checked, #collapse-payment-address input[type=\'radio\']:checked, #collapse-payment-address input[type=\'hidden\'], #collapse-payment-address textarea, #collapse-payment-address select'),
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search><![CDATA[
+				data: $('#payment-address input[type=\'text\'], #payment-address input[type=\'checkbox\']:checked, #payment-address input[type=\'radio\']:checked, #payment-address input[type=\'hidden\'], #payment-address select'),
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				data: $('#payment-address input[type=\'text\'], #payment-address input[name=\'password\'], #payment-address input[name=\'confirm\'], #payment-address input[type=\'date\'], #payment-address input[type=\'datetime-local\'], #payment-address input[type=\'time\'], #payment-address input[type=\'checkbox\']:checked, #payment-address input[type=\'radio\']:checked, #payment-address input[type=\'hidden\'], #payment-address textarea, #payment-address select'),
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/view/theme/default/template/checkout/confirm.twig">
+		<operation>
+			<search><![CDATA[
+				<div class="table-responsive">
+			]]></search>
+			<add position="before"><![CDATA[
+					{% if quote_system_status and quoteproducts %}
+						<div class="table-responsive">
+							<table class="table table-bordered table-hover">
+								<thead>
+									<tr>
+										<td class="text-left">{{ column_name }}</td>
+										<td class="text-left">{{ column_model }}</td>
+										<td class="text-right">{{ column_quantity }}</td>
+										<td class="text-right">{{ column_price }}</td>
+										<td class="text-right">{{ column_total }}</td>
+									</tr>
+								</thead>
+								<tbody>
+									{% for quoteproduct in quoteproducts %}
+										<tr>
+											<td class="text-left">
+												<a href="{{ quoteproduct['href'] }}">{{ quoteproduct['name'] }}</a>
+												{% for quoteoption in quoteproduct.option %}
+													<br />
+													&nbsp;<small> - {{ quoteoption['name'] }}: {{ quoteoption['value'] }}</small>
+												{% endfor %}
+											</td>
+											<td class="text-left">{{ quoteproduct['model'] }}</td>
+											<td class="text-right">{{ quoteproduct['quantity'] }}</td>
+											<td class="text-right">{{ text_quote_request }}</td>
+											<td class="text-right">{{ text_quote_request }}</td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					{% endif %}
+			]]></add>
+		</operation>
+	</file>
+	
+	<file path="catalog/view/theme/*/template/checkout/confirm.twig">
+		<operation>
+			<search><![CDATA[
+				<a href="{{ product.href }}">{{ product.name }}</a>
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				{% if product.href %}
+					<a href="{{ product.href }}">{{ product.name }}</a>
+				{% else %}
+					{{ product.name }}
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/view/theme/*/template/checkout/guest.twig">
+		<operation>
+			<search index="0"><![CDATA[
+				</fieldset>
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if quote_system_status and text_why_password %}
+					<legend>{{ text_why_password }}</legend>
+					<div class="form-group required">
+						<label class="control-label" for="input-payment-password">{{ entry_password }}</label>
+						<input type="password" name="password" value="" placeholder="{{ entry_password }}" id="input-payment-password" class="form-control" />
+					</div>
+					<div class="form-group required">
+						<label class="control-label" for="input-payment-confirm">{{ entry_confirm }}</label>
+						<input type="password" name="confirm" value="" placeholder="{{ entry_confirm }}" id="input-payment-confirm" class="form-control" />
+					</div>
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/view/theme/default/template/common/header.twig">
+		<operation>
+			<search><![CDATA[
+				<li><a href="{{ shopping_cart }}"
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if quote %}
+					<li><a href="{{ quote }}" id="quote-total" title="{{ text_quote }}"><i class="fa fa-shopping-cart"></i> <span class="hidden-xs hidden-sm hidden-md">{{ text_quote }}</span></a></li>
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/view/theme/*/template/extension/module/account.twig">
+		<operation>
+			<search><![CDATA[
+				<a href="{{ order }}" class="list-group-item">{{ text_order }}</a>
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				{% if quote_system_status %}
+					<a href="{{ order }}" class="list-group-item">{{ text_order }}</a> <a href="{{ quotes }}" class="list-group-item">{{ text_quotes }}</a>
+				{% else %}
+					<a href="{{ order }}" class="list-group-item">{{ text_order }}</a>
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/view/theme/default/template/product/product.twig">
+		<operation>
+			<search><![CDATA[
+				<button type="button" id="button-cart" data-loading-text="{{ text_loading }}" class="btn btn-primary btn-lg btn-block">{{ button_cart }}</button>
+			]]></search>
+			<add position="after"><![CDATA[
+				{% if quote_system_status %}
+					<button type="button" id="button-quote" data-loading-text="{{ text_loading }}" class="btn btn-primary btn-lg btn-block">{{ button_quote }}</button>
+				{% endif %}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$('#button-cart').on('click', function() {
+			]]></search>
+			<add position="before"><![CDATA[
+				{% if quote_system_status %}
+					$('#button-quote').on('click', function() {
+						$.ajax({
+							url: 'index.php?route=extension/checkout/quote_system/add',
+							type: 'post',
+							data: $('#product input[type=\'text\'], #product input[type=\'hidden\'], #product input[type=\'radio\']:checked, #product input[type=\'checkbox\']:checked, #product select, #product textarea'),
+							dataType: 'json',
+							beforeSend: function() {
+								$('#button-quote').button('loading');
+								$('#button-cart').attr('disabled', 'disabled');
+							},
+							complete: function() {
+								$('#button-quote').button('reset');
+								$('#button-cart').removeAttr('disabled');
+							},
+							success: function(json) {
+								$('.alert, .alert-success, .alert-danger, .text-danger').remove();
+								$('.form-group').removeClass('has-error');
+								if (json['error']) {
+									if (json['error']['option']) {
+										for (i in json['error']['option']) {
+											var element = $('#input-option' + i.replace('_', '-'));
+											if (element.parent().hasClass('input-group')) {
+												element.parent().after('<div class="text-danger">' + json['error']['option'][i] + '</div>');
+											} else {
+												element.after('<div class="text-danger">' + json['error']['option'][i] + '</div>');
+											}
+										}
+									}
+									if (json['error']['recurring']) {
+										$('select[name=\'recurring_id\']').after('<div class="text-danger">' + json['error']['recurring'] + '</div>');
+									}
+									// Highlight any found errors
+									$('.text-danger').parent().addClass('has-error');
+								}
+								if (json['success']) {
+									$('.breadcrumb').after('<div class="alert alert-success">' + json['success'] + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+								}
+							},
+							error: function(xhr, ajaxOptions, thrownError) {
+								alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+							}
+						});
+					});
+				{% endif %}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="system/library/cart/cart.php">
+		<operation>
+			<search><![CDATA[
+				$product_data[] = array(
+			]]></search>
+			<add position="before"><![CDATA[
+				$key = $cart['cart_id'];
+				if (isset($this->session->data['quote']['price'][$key])) {
+					$price = $this->session->data['quote']['price'][$key];
+					$option_price = 0;
+				}
+				if (isset($this->session->data['quote']['quantity'][$key])) {
+					$cart['quantity'] = $this->session->data['quote']['quantity'][$key];
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->db->query("DELETE FROM " . DB_PREFIX . "cart WHERE (api_id > '0' OR customer_id = '0') AND date_added < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+			]]></search>
+			<add position="after"><![CDATA[
+				if ($this->config->get('module_quote_system_status') && $this->config->get('module_quote_system_catalog_status')) {
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `date_added` < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->db->query("UPDATE " . DB_PREFIX . "cart SET session_id = '" . $this->db->escape($this->session->getId()) . "' WHERE api_id = '0' AND customer_id = '" . (int)$this->customer->getId() . "'");
+			]]></search>
+			<add position="before"><![CDATA[
+				if ($this->config->get('module_quote_system_status') && $this->config->get('module_quote_system_catalog_status')) {
+					$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote_cart` SET `session_id` = '" . $this->db->escape($this->session->getId()) . "' WHERE `customer_id` = '" . (int)$this->customer->getId() . "'");
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->db->query("UPDATE " . DB_PREFIX . "cart SET quantity = '" . (int)$quantity . "' WHERE cart_id = '" . (int)$cart_id . "' AND api_id = '" . (isset($this->session->data['api_id']) ? (int)$this->session->data['api_id'] : 0) . "' AND customer_id = '" . (int)$this->customer->getId() . "' AND session_id = '" . $this->db->escape($this->session->getId()) . "'");
+			]]></search>
+			<add position="after"><![CDATA[
+				unset($this->session->data['quote']['price'][$cart_id]);
+				unset($this->session->data['quote']['quantity'][$cart_id]);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				$this->db->query("DELETE FROM " . DB_PREFIX . "cart WHERE cart_id = '" . (int)$cart_id . "' AND api_id = '" . (isset($this->session->data['api_id']) ? (int)$this->session->data['api_id'] : 0) . "' AND customer_id = '" . (int)$this->customer->getId() . "' AND session_id = '" . $this->db->escape($this->session->getId()) . "'");
+			]]></search>
+			<add position="after"><![CDATA[
+				unset($this->session->data['quote']['price'][$cart_id]);
+				unset($this->session->data['quote']['quantity'][$cart_id]);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				public function add(
+			]]></search>
+			<add position="before"><![CDATA[
+				public function addquote($product_id, $qty = 1, $option = array(), $recurring_id = 0) {
+					if ($this->customer->isLogged()) {
+						$query = $this->db->query("SELECT COUNT(*) AS total FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `customer_id` = '" . (int)$this->customer->getId() . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "' AND `product_id` = '" . (int)$product_id . "' AND `recurring_id` = '" . (int)$recurring_id . "' AND `option` = '" . $this->db->escape(json_encode($option)) . "'");
+						if (!$query->row['total']) {
+							$this->db->query("INSERT INTO `" . DB_PREFIX . "oe_quote_cart` SET `customer_id` = '" . (int)$this->customer->getId() . "', `session_id` = '" . $this->db->escape($this->session->getId()) . "', `product_id` = '" . (int)$product_id . "', `recurring_id` = '" . (int)$recurring_id . "', `option` = '" . $this->db->escape(json_encode($option)) . "', `quantity` = '" . (int)$qty . "', `date_added` = NOW()");
+						} else {
+							$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote_cart` SET `quantity` = (`quantity` + " . (int)$qty . ") WHERE `customer_id` = '" . (int)$this->customer->getId() . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "' AND `product_id` = '" . (int)$product_id . "' AND `recurring_id` = '" . (int)$recurring_id . "' AND `option` = '" . $this->db->escape(json_encode($option)) . "'");
+						}
+					} elseif (isset($this->session->data['quote_account_id'])) {
+						$query = $this->db->query("SELECT COUNT(*) AS total FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `quote_account_id` = '" . (int)$this->session->data['quote_account_id'] . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "' AND `product_id` = '" . (int)$product_id . "' AND `recurring_id` = '" . (int)$recurring_id . "' AND `option` = '" . $this->db->escape(json_encode($option)) . "'");
+						if (!$query->row['total']) {
+							$this->db->query("INSERT INTO `" . DB_PREFIX . "oe_quote_cart` SET `quote_account_id` = '" . (int)$this->session->data['quote_account_id'] . "', `session_id` = '" . $this->db->escape($this->session->getId()) . "', `product_id` = '" . (int)$product_id . "', `recurring_id` = '" . (int)$recurring_id . "', `option` = '" . $this->db->escape(json_encode($option)) . "', `quantity` = '" . (int)$qty . "', `date_added` = NOW()");
+						} else {
+							$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote_cart` SET `quantity` = (`quantity` + " . (int)$qty . ") WHERE `quote_account_id` = '" . (int)$this->session->data['quote_account_id'] . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "' AND `product_id` = '" . (int)$product_id . "' AND `recurring_id` = '" . (int)$recurring_id . "' AND `option` = '" . $this->db->escape(json_encode($option)) . "'");
+						}
+					} elseif (isset($this->session->data['quote_guest_id'])) {
+						$query = $this->db->query("SELECT COUNT(*) AS total FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `quote_guest_id` = '" . (int)$this->session->data['quote_guest_id'] . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "' AND `product_id` = '" . (int)$product_id . "' AND `recurring_id` = '" . (int)$recurring_id . "' AND `option` = '" . $this->db->escape(json_encode($option)) . "'");
+						if (!$query->row['total']) {
+							$this->db->query("INSERT INTO `" . DB_PREFIX . "oe_quote_cart` SET `quote_guest_id` = '" . (int)$this->session->data['quote_guest_id'] . "', `session_id` = '" . $this->db->escape($this->session->getId()) . "', `product_id` = '" . (int)$product_id . "', `recurring_id` = '" . (int)$recurring_id . "', `option` = '" . $this->db->escape(json_encode($option)) . "', `quantity` = '" . (int)$qty . "', `date_added` = NOW()");
+						} else {
+							$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote_cart` SET `quantity` = (`quantity` + " . (int)$qty . ") WHERE `quote_guest_id` = '" . (int)$this->session->data['quote_guest_id'] . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "' AND `product_id` = '" . (int)$product_id . "' AND `recurring_id` = '" . (int)$recurring_id . "' AND `option` = '" . $this->db->escape(json_encode($option)) . "'");
+						}
+					}
+				}
+				public function updatequote($key, $qty) {
+					$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote_cart` SET `quantity` = '" . (int)$qty . "' WHERE `quote_cart_id` = '" . (int)$key . "' AND `customer_id` = '" . (int)$this->customer->getId() . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "'");
+				}
+				public function removequote($key) {
+					$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `quote_cart_id` = '" . (int)$key . "' AND `customer_id` = '" . (int)$this->customer->getId() . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "'");
+				}
+				public function clearquote() {
+					if ($this->customer->isLogged()) {
+						$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `customer_id` = '" . (int)$this->customer->getId() . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "'");
+					} elseif (isset($this->session->data['quote_account_id'])) {
+						$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `quote_account_id` = '" . (int)$this->session->data['quote_account_id'] . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "'");
+					} elseif (isset($this->session->data['quote_guest_id'])) {
+						$this->db->query("DELETE FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `quote_guest_id` = '" . (int)$this->session->data['quote_guest_id'] . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "'");
+					}
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				public function hasDownload() {
+			]]></search>
+			<add position="before"><![CDATA[
+				public function getQuoteProducts() {
+					$product_data = array();
+					if ($this->customer->isLogged()) {
+						$quote_cart_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `customer_id` = '" . (int)$this->customer->getId() . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "'");
+					} elseif (isset($this->session->data['quote_account_id'])) {
+						$quote_cart_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `quote_account_id` = '" . (int)$this->session->data['quote_account_id'] . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "'");
+					} elseif (isset($this->session->data['quote_guest_id'])) {
+						$quote_cart_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_quote_cart` WHERE `quote_guest_id` = '" . (int)$this->session->data['quote_guest_id'] . "' AND `session_id` = '" . $this->db->escape($this->session->getId()) . "'");
+					}
+					if (isset($quote_cart_query)) {
+						foreach ($quote_cart_query->rows as $quote_cart) {
+							$stock = true;
+							$product_query = $this->db->query("SELECT * FROM " . DB_PREFIX . "product_to_store p2s LEFT JOIN " . DB_PREFIX . "product p ON (p2s.product_id = p.product_id) LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id) WHERE p2s.store_id = '" . (int)$this->config->get('config_store_id') . "' AND p2s.product_id = '" . (int)$quote_cart['product_id'] . "' AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "' AND p.date_available <= NOW() AND p.status = '1'");
+							if ($product_query->num_rows && ($quote_cart['quantity'] > 0)) {
+								$option_data = array();
+								foreach (json_decode($quote_cart['option']) as $product_option_id => $value) {
+									$option_query = $this->db->query("SELECT po.product_option_id, po.option_id, od.name, o.type FROM " . DB_PREFIX . "product_option po LEFT JOIN `" . DB_PREFIX . "option` o ON (po.option_id = o.option_id) LEFT JOIN " . DB_PREFIX . "option_description od ON (o.option_id = od.option_id) WHERE po.product_option_id = '" . (int)$product_option_id . "' AND po.product_id = '" . (int)$quote_cart['product_id'] . "' AND od.language_id = '" . (int)$this->config->get('config_language_id') . "'");
+									if ($option_query->num_rows) {
+										if ($option_query->row['type'] == 'select' || $option_query->row['type'] == 'radio' || $option_query->row['type'] == 'image') {
+											$option_value_query = $this->db->query("SELECT pov.option_value_id, ovd.name, pov.quantity, pov.subtract, pov.price, pov.price_prefix, pov.points, pov.points_prefix, pov.weight, pov.weight_prefix FROM " . DB_PREFIX . "product_option_value pov LEFT JOIN " . DB_PREFIX . "option_value ov ON (pov.option_value_id = ov.option_value_id) LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (ov.option_value_id = ovd.option_value_id) WHERE pov.product_option_value_id = '" . (int)$value . "' AND pov.product_option_id = '" . (int)$product_option_id . "' AND ovd.language_id = '" . (int)$this->config->get('config_language_id') . "'");
+											$option_data[] = array(
+												'product_option_id'       => $product_option_id,
+												'product_option_value_id' => $value,
+												'option_id'               => $option_query->row['option_id'],
+												'option_value_id'         => $option_value_query->row['option_value_id'],
+												'name'                    => $option_query->row['name'],
+												'value'                   => $option_value_query->row['name'],
+												'type'                    => $option_query->row['type']
+											);
+										} elseif ($option_query->row['type'] == 'checkbox' && is_array($value)) {
+											foreach ($value as $product_option_value_id) {
+												$option_value_query = $this->db->query("SELECT pov.option_value_id, ovd.name, pov.quantity, pov.subtract, pov.price, pov.price_prefix, pov.points, pov.points_prefix, pov.weight, pov.weight_prefix FROM " . DB_PREFIX . "product_option_value pov LEFT JOIN " . DB_PREFIX . "option_value ov ON (pov.option_value_id = ov.option_value_id) LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (ov.option_value_id = ovd.option_value_id) WHERE pov.product_option_value_id = '" . (int)$product_option_value_id . "' AND pov.product_option_id = '" . (int)$product_option_id . "' AND ovd.language_id = '" . (int)$this->config->get('config_language_id') . "'");
+												if ($option_value_query->num_rows) {
+													$option_data[] = array(
+														'product_option_id'       => $product_option_id,
+														'product_option_value_id' => $product_option_value_id,
+														'option_id'               => $option_query->row['option_id'],
+														'option_value_id'         => $option_value_query->row['option_value_id'],
+														'name'                    => $option_query->row['name'],
+														'value'                   => $option_value_query->row['name'],
+														'type'                    => $option_query->row['type']
+													);
+												}
+											}
+										} elseif ($option_query->row['type'] == 'text' || $option_query->row['type'] == 'textarea' || $option_query->row['type'] == 'file' || $option_query->row['type'] == 'date' || $option_query->row['type'] == 'datetime' || $option_query->row['type'] == 'time') {
+											$option_data[] = array(
+												'product_option_id'       => $product_option_id,
+												'product_option_value_id' => '',
+												'option_id'               => $option_query->row['option_id'],
+												'option_value_id'         => '',
+												'name'                    => $option_query->row['name'],
+												'value'                   => $value,
+												'type'                    => $option_query->row['type']
+											);
+										}
+									}
+								}
+								$recurring_query = $this->db->query("SELECT * FROM " . DB_PREFIX . "recurring r LEFT JOIN " . DB_PREFIX . "product_recurring pr ON (r.recurring_id = pr.recurring_id) LEFT JOIN " . DB_PREFIX . "recurring_description rd ON (r.recurring_id = rd.recurring_id) WHERE r.recurring_id = '" . (int)$quote_cart['recurring_id'] . "' AND pr.product_id = '" . (int)$quote_cart['product_id'] . "' AND rd.language_id = " . (int)$this->config->get('config_language_id') . " AND r.status = 1 AND pr.customer_group_id = '" . (int)$this->config->get('config_customer_group_id') . "'");
+								if ($recurring_query->num_rows) {
+									$recurring = array(
+										'recurring_id'    => $quote_cart['recurring_id'],
+										'name'            => $recurring_query->row['name'],
+										'frequency'       => $recurring_query->row['frequency'],
+										'price'           => $recurring_query->row['price'],
+										'cycle'           => $recurring_query->row['cycle'],
+										'duration'        => $recurring_query->row['duration'],
+										'trial'           => $recurring_query->row['trial_status'],
+										'trial_frequency' => $recurring_query->row['trial_frequency'],
+										'trial_price'     => $recurring_query->row['trial_price'],
+										'trial_cycle'     => $recurring_query->row['trial_cycle'],
+										'trial_duration'  => $recurring_query->row['trial_duration']
+									);
+								} else {
+									$recurring = false;
+								}
+								$product_data[] = array(
+									'quote_cart_id'		=> $quote_cart['quote_cart_id'],
+									'product_id'		=> $product_query->row['product_id'],
+									'custom_product'	=> 0,
+									'name'				=> $product_query->row['name'],
+									'model'				=> $product_query->row['model'],
+									'sku'				=> $product_query->row['sku'],
+									'upc'				=> $product_query->row['upc'],
+									'location'			=> $product_query->row['location'],
+									'shipping'			=> $product_query->row['shipping'],
+									'image'				=> $product_query->row['image'],
+									'option'			=> $option_data,
+									'quantity'			=> $quote_cart['quantity'],
+									'minimum'			=> $product_query->row['minimum'],
+									'subtract'			=> $this->config->get('module_quote_system_subtract_stock'),
+									'stock'				=> $stock,
+									'price'				=> 0,
+									'total'				=> 0,
+									'notax'				=> 0,
+									'sort_order'		=> 0,
+									'reward'			=> 0,
+									'points'			=> 0,
+									'tax_class_id'		=> $product_query->row['tax_class_id'],
+									'weight'			=> $product_query->row['weight'],
+									'weight_class_id'	=> $product_query->row['weight_class_id'],
+									'length'			=> $product_query->row['length'],
+									'length_class_id'	=> $product_query->row['length_class_id'],
+									'width'				=> $product_query->row['width'],
+									'height'			=> $product_query->row['height'],
+									'recurring'			=> $recurring
+								);
+							} else {
+								$this->removequote($quote_cart['quote_cart_id']);
+							}
+						}
+					}
+					return $product_data;
+				}
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				public function hasProducts() {
+			]]></search>
+			<add position="before"><![CDATA[
+				public function hasQuoteProducts() {
+					return count($this->getQuoteProducts());
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="system/library/cart/customer.php">
+		<operation>
+			<search><![CDATA[
+				$this->session->data['customer_id'] = $customer_query->row['customer_id'];
+			]]></search>
+			<add position="after"><![CDATA[
+				if (isset($this->session->data['quote_account_id'])) {
+					$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote_cart` SET `customer_id` = '" . (int)$customer_query->row['customer_id'] . "', `quote_account_id` = '0' WHERE `quote_account_id` = '" . (int)$this->session->data['quote_account_id'] . "'");
+				} elseif (isset($this->session->data['quote_guest_id'])) {
+					$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote_cart` SET `customer_id` = '" . (int)$customer_query->row['customer_id'] . "', `quote_guest_id` = '0' WHERE `quote_guest_id` = '" . (int)$this->session->data['quote_guest_id'] . "'");
+				}
+				unset($this->session->data['quote_account_id']);
+				unset($this->session->data['quote_guest_id']);
+			]]></add>
+		</operation>
+		<operation>
+			<search><![CDATA[
+				return false;
+			]]></search>
+			<add position="replace" trim="true"><![CDATA[
+				$table_query = $this->db->query("SHOW TABLES LIKE '" . DB_PREFIX . "oe_quote_account'");
+				if ($table_query->num_rows) {
+					$quote_account_query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oe_quote_account` WHERE LOWER(`email`) = '" . $this->db->escape(utf8_strtolower($email)) . "' AND (`password` = SHA1(CONCAT(`salt`, SHA1(CONCAT(`salt`, SHA1('" . $this->db->escape($password) . "'))))) OR `password` = '" . $this->db->escape(md5($password)) . "')");
+					if ($quote_account_query->num_rows) {
+						$this->session->data['quote_account_id'] = $quote_account_query->row['quote_account_id'];
+						if (isset($this->session->data['quote_guest_id'])) {
+							$this->db->query("UPDATE `" . DB_PREFIX . "oe_quote_cart` SET `quote_account_id` = '" . (int)$quote_account_query->row['quote_account_id'] . "', `quote_guest_id` = '0' WHERE `quote_guest_id` = '" . (int)$this->session->data['quote_guest_id'] . "'");
+							unset($this->session->data['quote_guest_id']);
+						}
+						$this->session->data['quote_guest']['customer_group_id'] = $quote_account_query->row['customer_group_id'];
+						$this->session->data['quote_guest']['firstname'] = $quote_account_query->row['firstname'];
+						$this->session->data['quote_guest']['lastname'] = $quote_account_query->row['lastname'];
+						$this->session->data['quote_guest']['email'] = $quote_account_query->row['email'];
+						$this->session->data['quote_guest']['telephone'] = $quote_account_query->row['telephone'];
+						$this->session->data['guest']['firstname'] = $quote_account_query->row['firstname'];
+						$this->session->data['guest']['lastname'] = $quote_account_query->row['lastname'];
+						$this->session->data['guest']['email'] = $quote_account_query->row['email'];
+						$this->session->data['guest']['telephone'] = $quote_account_query->row['telephone'];
+						if (!empty($quote_account_query->row['address_1'])) {
+							$country_query = $query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "country` WHERE `country_id` = '" . (int)$quote_account_query->row['country_id'] . "' AND status = '1'");
+							$zone_query = $this->db->query("SELECT * FROM " . DB_PREFIX . "zone WHERE zone_id = '" . (int)$quote_account_query->row['zone_id'] . "' AND status = '1'");
+							$this->session->data['payment_address'] = array(
+								'firstname'			=> $quote_account_query->row['firstname'],
+								'lastname'			=> $quote_account_query->row['lastname'],
+								'company'			=> $quote_account_query->row['company'],
+								'address_1'			=> $quote_account_query->row['address_1'],
+								'address_2'			=> $quote_account_query->row['address_2'],
+								'city'				=> $quote_account_query->row['city'],
+								'postcode'			=> $quote_account_query->row['postcode'],
+								'country_id'		=> $quote_account_query->row['country_id'],
+								'country'			=> $country_query->row['name'],
+								'zone_id'			=> $quote_account_query->row['zone_id'],
+								'zone'				=> $zone_query->row['name'],
+								'zone_code'			=> $zone_query->row['code'],
+								'address_format'	=> $country_query->row['address_format']
+							);
+							$this->session->data['shipping_address'] = array(
+								'firstname'			=> $quote_account_query->row['firstname'],
+								'lastname'			=> $quote_account_query->row['lastname'],
+								'company'			=> $quote_account_query->row['company'],
+								'address_1'			=> $quote_account_query->row['address_1'],
+								'address_2'			=> $quote_account_query->row['address_2'],
+								'city'				=> $quote_account_query->row['city'],
+								'postcode'			=> $quote_account_query->row['postcode'],
+								'country_id'		=> $quote_account_query->row['country_id'],
+								'country'			=> $country_query->row['name'],
+								'zone_id'			=> $quote_account_query->row['zone_id'],
+								'zone'				=> $zone_query->row['name'],
+								'zone_code'			=> $zone_query->row['code'],
+								'address_format'	=> $country_query->row['address_format']
+							);
+							$this->session->data['country_id'] = $quote_account_query->row['country_id'];
+							$this->session->data['zone_id'] = $quote_account_query->row['zone_id'];
+						}
+						return true;
+					} else {
+						return false;
+					}
+				} else {
+					return false;
+				}
+			]]></add>
+		</operation>
+	</file>
+
+</modification>
